@@ -1,0 +1,29 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "client.fullname" . }}
+  labels:
+    {{- include "client.labels" . | nindent 4 }}
+spec:
+  template:
+    spec:
+      containers:
+      - name: chaosclient
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+        imagePullPolicy: {{.Values.image.pullPolicy}}
+        args:
+          - "client"
+          - "-p"
+          - {{.Values.chaos.plan | quote}}
+          - "--host"
+          - {{.Values.chaos.host| quote}}
+          - "--port"
+          - {{.Values.chaos.port| quote}}
+        volumeMounts:
+          - name: chaos-volume
+            mountPath: /plans
+      volumes:
+        - name: chaos-volume
+          configMap:
+            name: chaosconfig
+      restartPolicy: Never

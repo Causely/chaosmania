@@ -1,0 +1,15 @@
+{{- if and ( .Capabilities.APIVersions.Has "monitoring.coreos.com/v1" ) ( .Values.serviceMonitor.enabled ) }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: boutique
+spec:
+  endpoints:
+    - port: http
+      interval: 15s
+      path: /metrics
+  jobLabel: boutique
+  selector:
+    matchLabels:
+      scrape-prometheus: "true"
+{{- end }}

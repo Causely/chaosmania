@@ -1,0 +1,17 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "*"
+
+jobs:
+  test:
+    uses: causely/chaosmania/.github/workflows/test.yaml@main
+
+  build-images:
+    needs: test
+    uses: causely/chaosmania/.github/workflows/build.yaml@main
+    secrets: inherit
+    with:
+      push: true

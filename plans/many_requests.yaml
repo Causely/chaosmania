@@ -1,0 +1,76 @@
+---
+phases:
+  - name: Allocate memory
+    duration: 600s
+
+    client:
+      workers: 10
+      delay: 0s
+
+    workload:
+      actions:
+        # Send request to ad
+        - name: HTTPRequest
+          config:
+            url: http://ad:8080
+            body:
+              actions:
+                - name: AllocateMemory
+                  config:
+                    sizeBytes: 100
+                    numAllocations: 100
+
+        # Send request to recommendation
+        - name: HTTPRequest
+          config:
+            url: http://recommendation:8080
+            body:
+              actions:
+                - name: AllocateMemory
+                  config:
+                    sizeBytes: 100
+                    numAllocations: 100
+
+                # Send request to recommendation
+                - name: HTTPRequest
+                  config:
+                    url: http://productcatalog:8080
+                    body:
+                      actions:
+                        - name: AllocateMemory
+                          config:
+                            sizeBytes: 100
+                            numAllocations: 100
+
+        # Send request to shipping
+        - name: HTTPRequest
+          config:
+            url: http://shipping:8080
+            body:
+              actions:
+                - name: AllocateMemory
+                  config:
+                    sizeBytes: 100
+                    numAllocations: 100
+
+        # Send request to cart
+        - name: HTTPRequest
+          config:
+            url: http://cart:8080
+            body:
+              actions:
+                - name: AllocateMemory
+                  config:
+                    sizeBytes: 100
+                    numAllocations: 100
+
+        # Send request to currency
+        - name: HTTPRequest
+          config:
+            url: http://currency:8080
+            body:
+              actions:
+                - name: AllocateMemory
+                  config:
+                    sizeBytes: 100
+                    numAllocations: 100

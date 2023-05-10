@@ -1,0 +1,24 @@
+---
+phases:
+  - name: Phase1
+    duration: 60s
+
+    client:
+      workers: 3
+      delay: 0s
+
+    workload:
+      actions:
+        # Execute redis commands
+        - name: RedisCommand
+          config:
+            command: lpush
+            args:
+              - key1
+              - value1
+
+        - name: RedisCommand
+          config:
+            command: lpop
+            args:
+              - key1

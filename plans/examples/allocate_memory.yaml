@@ -1,0 +1,17 @@
+---
+phases:
+  - name: Phase1
+    duration: 60s
+
+    client:
+      workers: 3
+      delay: 0s
+
+    workload:
+      actions:
+        - name: AllocateMemory
+          config:
+            sizeBytes: 100 # Required
+            numAllocations: 100 # Required
+            leak: false # If true the memory will not be released up to leakLimitBytes
+            leakLimitBytes: 3000000000 # Number of bytes which should not be released

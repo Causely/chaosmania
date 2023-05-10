@@ -1,0 +1,17 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "single.fullname" . }}
+  labels:
+    {{- include "single.labels" . | nindent 4}}
+spec:
+  selector:
+    matchLabels:
+      {{- include "single.selectorLabels" . | nindent 6}}
+  template:
+    metadata:
+      labels:
+        {{- include "single.labels" . | nindent 8}}
+    spec:
+      containers:
+      {{- include "chaosmania.container" . | nindent 8}}

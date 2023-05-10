@@ -1,0 +1,16 @@
+image:
+  repository: quay.io/causely/chaosmania
+  pullPolicy: Always
+  tag: "latest"
+
+resources:
+  # limits:
+  #   cpu: 100m
+  #   memory: 128Mi
+  requests:
+    cpu: 10m
+    memory: 64Mi
+
+otlp:
+  endpoint: "" # http://tempo.monitoring:4318
+  insecure: true

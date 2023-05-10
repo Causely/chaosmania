@@ -1,0 +1,21 @@
+---
+phases:
+  - name: Phase1
+    duration: 60s
+
+    client:
+      workers: 3
+      delay: 0s
+
+    workload:
+      actions:
+        # Execute arbitrary mysql query
+        - name: MysqlQuery
+          config:
+            # host: mysql.chaosmania.svc.cluster.local
+            dbname: performance_schema
+            query:  select * from events_statements_history
+            repeat: 100
+            maxopen: 5
+            maxidle: 10
+            # burn_duration: 1s

@@ -1,0 +1,15 @@
+---
+phases:
+  - name: Phase1
+    duration: 60s
+
+    client:
+      workers: 3
+      delay: 0s
+
+    workload:
+      actions:
+        # Sleep for a certain `duration`
+        - name: Sleep
+          config:
+            duration: 1s

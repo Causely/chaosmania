@@ -3,15 +3,18 @@ kind: Deployment
 metadata:
   name: shipping
   labels:
-    app: shipping
+    app.kubernetes.io/instance: shipping
+    app.kubernetes.io/name: shipping
 spec:
   selector:
     matchLabels:
-      app: shipping
+      app.kubernetes.io/instance: shipping
+      app.kubernetes.io/name: shipping
   template:
     metadata:
       labels:
-        app: shipping
+        app.kubernetes.io/instance: shipping
+        app.kubernetes.io/name: shipping
     spec:
       containers:
       {{- include "chaosmania.container" . | nindent 6}}

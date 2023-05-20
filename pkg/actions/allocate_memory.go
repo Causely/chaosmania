@@ -14,6 +14,8 @@ type AllocateMemory struct {
 type AllocateMemoryConfig struct {
 	SizeBytes      int  `json:"sizeBytes"`
 	NumAllocations int  `json:"numAllocations"`
+	Reference      bool `json:"reference"`
+	NumReferences  int  `json:"numReferences"`
 	Leak           bool `json:"leak"`
 	LeakLimitBytes int  `json:"leakLimitBytes"`
 }
@@ -36,6 +38,29 @@ func (a *AllocateMemory) leak(config *AllocateMemoryConfig, data [][]byte) {
 	}
 }
 
+func (a *AllocateMemory) reference(config *AllocateMemoryConfig, data [][]byte) {
+	if !config.Reference {
+		return
+	}
+
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	refs := make([][][]byte, config.NumReferences)
+	for i := range refs {
+		if config.LeakLimitBytes > 0 && a.leakedDataSize > config.LeakLimitBytes {
+			break
+		}
+
+		refs[i] = data
+	}
+
+	// Make the compiler happy and use the variables
+	var sizeTotal int
+	for i := range refs {
+		sizeTotal += len(refs[i])
+	}
+}
+
 func (a *AllocateMemory) Execute(ctx context.Context, cfg map[string]any) error {
 	config, err := ParseConfig[AllocateMemoryConfig](cfg)
 	if err != nil {
@@ -51,6 +76,8 @@ func (a *AllocateMemory) Execute(ctx context.Context, cfg map[string]any) error 
 
 		data = append(data, d)
 	}
+
+	a.reference(config, data)
 
 	a.leak(config, data)
 

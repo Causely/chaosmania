@@ -2,7 +2,6 @@ package actions
 
 import (
 	"context"
-
 	"github.com/Causely/chaosmania/pkg/logger"
 	"go.uber.org/zap"
 )
@@ -10,7 +9,7 @@ import (
 type Print struct{}
 
 type PrintConfig struct {
-	Message string
+	Message string `json:"message"`
 }
 
 func (a *Print) Execute(ctx context.Context, cfg map[string]any) error {
@@ -20,7 +19,9 @@ func (a *Print) Execute(ctx context.Context, cfg map[string]any) error {
 		return err
 	}
 
-	logger.FromContext(ctx).Info(config.Message)
+	if logger.FromContext(ctx) != nil {
+		logger.FromContext(ctx).Info(config.Message)
+	}
 
 	return nil
 }

@@ -29,25 +29,18 @@ var processedTransactionDuration = promauto.NewHistogram(prometheus.HistogramOpt
 	Help: "The processed transactions duration",
 })
 
-var causelyThresholds = promauto.NewGaugeVec(prometheus.GaugeOpts{
-	Name: "chaosmania_set_attribute",
-	Help: "Set an attribute",
-}, []string{"attribute"})
-
-func command_server(l *zap.Logger, ctx *cli.Context) error {
+func command_server(log *zap.Logger, ctx *cli.Context) error {
 	// Signal handling
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 	stop := make(chan struct{})
 
-	causelyThresholds.WithLabelValues("TransactionDurationHighThreshold").Set(0.123)
-
-	shutdown := InitOTLPProvider(l)
+	shutdown := InitOTLPProvider(log)
 	defer shutdown()
 
 	go func() {
 		sig := <-sigs
-		l.Info("received signal", zap.String("signal", sig.String()))
+		log.Info("received signal", zap.String("signal", sig.String()))
 		close(stop)
 	}()
 
@@ -76,7 +69,7 @@ func command_server(l *zap.Logger, ctx *cli.Context) error {
 			}
 
 			ctx := context.WithValue(r.Context(), "http.ResponseWriter", w)
-			ctx = logger.NewContext(ctx, l)
+			ctx = logger.NewContext(ctx, log)
 
 			err = workload.Execute(ctx)
 			if err != nil {
@@ -125,11 +118,11 @@ func command_server(l *zap.Logger, ctx *cli.Context) error {
 	port := ctx.Int64("port")
 	server := &http.Server{Addr: fmt.Sprintf(":%v", port), Handler: handler}
 	go func() {
-		l.Info(fmt.Sprintf("listening at %v", port))
+		log.Info(fmt.Sprintf("listening at %v", port))
 		err := server.ListenAndServe()
 
 		if err != nil {
-			l.Warn("webserver error", zap.Error(err))
+			log.Warn("webserver error", zap.Error(err))
 		}
 	}()
 

@@ -10,7 +10,7 @@ require (
 	github.com/redis/go-redis/v9 v9.0.4
 	github.com/rotisserie/eris v0.5.4
 	github.com/urfave/cli/v2 v2.25.3
-	go.nhat.io/otelsql v0.10.0
+	go.nhat.io/otelsql v0.10.2
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.41.1
 	go.opentelemetry.io/otel v1.15.1
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.15.1
@@ -46,7 +46,7 @@ require (
 	go.uber.org/atomic v1.10.0 // indirect
 	go.uber.org/multierr v1.8.0 // indirect
 	golang.org/x/net v0.8.0 // indirect
-	golang.org/x/sys v0.7.0 // indirect
+	golang.org/x/sys v0.8.0 // indirect
 	golang.org/x/text v0.8.0 // indirect
 	google.golang.org/genproto v0.0.0-20230125152338-dcaf20b6aeaa // indirect
 	google.golang.org/grpc v1.54.0 // indirect

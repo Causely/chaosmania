@@ -37,6 +37,7 @@ type Workload struct {
 
 type Client struct {
 	Delay   time.Duration `json:"delay"`
+	Timeout time.Duration `json:"timeout"`
 	Workers int           `json:"workers"`
 }
 
@@ -72,12 +73,12 @@ func (p *Workload) Verify() error {
 }
 
 func (p *Phase) Verify() error {
-	err := p.Workload.Verify()
+	err := p.Setup.Verify()
 	if err != nil {
 		return err
 	}
 
-	err = p.Setup.Verify()
+	err = p.Workload.Verify()
 	if err != nil {
 		return err
 	}
@@ -100,8 +101,7 @@ func (p *Workload) Execute(ctx context.Context) error {
 		}
 
 		if ctx.Err() != nil {
-			logger.FromContext(ctx).Warn("context error", zap.Error(err), zap.String("action", action.Name))
-			return nil
+			logger.FromContext(ctx).Warn("context error", zap.Error(ctx.Err()), zap.String("action", action.Name))
 		}
 
 		err = a.Execute(ctx, action.Config)

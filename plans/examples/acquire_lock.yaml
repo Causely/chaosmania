@@ -1,10 +1,10 @@
 ---
 phases:
   - name: Phase1
-    duration: 60s
+    duration: 600s
 
     client:
-      workers: 3
+      workers: 4
       delay: 0s
 
     workload:
@@ -16,7 +16,7 @@ phases:
 
         - name: Sleep
           config:
-            duration: 10m
+            duration: 2s
 
         # Unlock the mutex.
         - name: GlobalMutexUnlock

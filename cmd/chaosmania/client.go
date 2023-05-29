@@ -113,9 +113,14 @@ func executePhase(logger *zap.Logger, phase actions.Phase, raw map[string]any, h
 
 			statusCodes := make(map[int]int)
 
+			// Use 10sec client timeout by default, but allow the client to set a custom timeout
+			timeout := time.Duration(10) * time.Second
+			if phase.Client.Timeout != 0 {
+				timeout = phase.Client.Timeout
+			}
 			// Send the request to the server
 			client := &http.Client{
-				Timeout: time.Duration(10) * time.Second,
+				Timeout: timeout,
 			}
 
 			for {

@@ -4,18 +4,30 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"regexp"
+
 	"github.com/Causely/chaosmania/pkg/actions"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/collectors"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/urfave/cli/v2"
 	"go.uber.org/zap"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 )
 
 type contextKey string
 
 const responseWriterKey contextKey = "http.ResponseWriter"
+
+var processedTransactionDuration = promauto.NewHistogram(prometheus.HistogramOpts{
+	Name: "chaosmania_processed_transactions_duration",
+	Help: "The processed transactions duration",
+})
 
 func command_server(log *zap.Logger, ctx *cli.Context) error {
 	// Signal handling
@@ -34,6 +46,7 @@ func command_server(log *zap.Logger, ctx *cli.Context) error {
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodPost:
+			start := time.Now()
 
 			// Parse the JSON data from the request body
 			var workload actions.Workload
@@ -62,6 +75,7 @@ func command_server(log *zap.Logger, ctx *cli.Context) error {
 			}
 
 			fmt.Fprint(w, " ")
+			processedTransactionDuration.Observe(float64(time.Since(start).Seconds()))
 		default:
 			w.WriteHeader(http.StatusMethodNotAllowed)
 			fmt.Fprintf(w, "Error: Method not allowed")
@@ -71,6 +85,17 @@ func command_server(log *zap.Logger, ctx *cli.Context) error {
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
+
+	prometheus.Unregister(collectors.NewGoCollector())
+	prometheus.MustRegister(collectors.NewGoCollector(
+		collectors.WithGoCollectorRuntimeMetrics(collectors.GoRuntimeMetricsRule{Matcher: regexp.MustCompile("/.*")}),
+	))
+
+	mux.Handle("/metrics", promhttp.HandlerFor(prometheus.DefaultGatherer,
+		promhttp.HandlerOpts{
+			EnableOpenMetrics: true,
+		},
+	))
 
 	port := ctx.Int64("port")
 	server := &http.Server{Addr: fmt.Sprintf(":%v", port), Handler: mux}

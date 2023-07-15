@@ -9,8 +9,15 @@ import (
 
 	"github.com/Causely/chaosmania/pkg/logger"
 	_ "github.com/lib/pq"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"go.uber.org/zap"
 )
+
+var PQDBQueryHistogram = promauto.NewHistogram(prometheus.HistogramOpts{
+	Name: "postgres_queries",
+	Help: "The number of Postgres SQL queries",
+})
 
 type PostgresqlQuery struct{}
 
@@ -91,6 +98,7 @@ func (a *PostgresqlQuery) Execute(ctx context.Context, cfg map[string]any) error
 	defer db.Close()
 
 	for i := 0; i < repeat; i++ {
+		now := time.Now()
 		rows, looperr := db.QueryContext(ctx, config.Query)
 		if looperr != nil {
 			logger.FromContext(ctx).Warn("failed to execute query", zap.Error(err))
@@ -122,6 +130,8 @@ func (a *PostgresqlQuery) Execute(ctx context.Context, cfg map[string]any) error
 				logger.FromContext(ctx).Debug(fmt.Sprintf("%s: %v\n", col, val))
 			}
 		}
+
+		PQDBQueryHistogram.Observe(float64(time.Since(now).Seconds()))
 	}
 
 	// Now burn cpu, if configured to do so

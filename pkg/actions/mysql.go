@@ -3,6 +3,7 @@ package actions
 import (
 	"context"
 	"fmt"
+	"log"
 	"strconv"
 	"time"
 
@@ -12,6 +13,8 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+	"go.nhat.io/otelsql"
+	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
 	"go.uber.org/zap"
 )
 
@@ -37,7 +40,22 @@ type MysqlQueryConfig struct {
 	BurnDuration Duration `json:"burn_duration"`
 }
 
-var MYDRIVER = "mysql"
+var MYDRIVER string
+
+func init() {
+	driverName, err := otelsql.Register("mysql",
+		otelsql.TraceQueryWithoutArgs(),
+		otelsql.TraceRowsClose(),
+		otelsql.TraceRowsAffected(),
+		otelsql.WithSystem(semconv.DBSystemMySQL), // Optional.
+	)
+
+	MYDRIVER = driverName
+
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+}
 
 func (a *MysqlQuery) Execute(ctx context.Context, cfg map[string]any) error {
 	config, err := ParseConfig[MysqlQueryConfig](cfg)

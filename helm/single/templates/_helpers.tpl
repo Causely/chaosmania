@@ -72,6 +72,22 @@ Create the name of the service account to use
       fieldPath: metadata.labels['app']
 {{ end -}}
 
+{{- define "otel.env" }}
+{{- if .Values.otlp.endpoint }}
+- name: OTEL_EXPORTER_OTLP_ENDPOINT
+  value: {{ .Values.otlp.endpoint }}
+{{- end }}
+{{- if .Values.otlp.insecure }}
+- name: OTEL_EXPORTER_OTLP_INSECURE
+  value: {{ .Values.otlp.insecure | quote }}
+{{- end }}
+{{- if .Values.otlp.headers }}
+- name: OTEL_EXPORTER_OTLP_HEADERS
+  value: {{ .Values.otlp.headers | quote }}
+{{- end }}
+{{ end -}}
+
+
 {{- define "chaosmania.container" }}
 - name: chaosmania
   image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"

@@ -4,20 +4,23 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"os"
+	"os/signal"
 	"regexp"
+	"syscall"
+	"time"
 
 	"github.com/Causely/chaosmania/pkg/actions"
+	"github.com/Causely/chaosmania/pkg/logger"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/urfave/cli/v2"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"go.opentelemetry.io/otel"
 	"go.uber.org/zap"
-	"net/http"
-	"os"
-	"os/signal"
-	"syscall"
-	"time"
 )
 
 type contextKey string
@@ -34,6 +37,9 @@ func command_server(log *zap.Logger, ctx *cli.Context) error {
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 	stop := make(chan struct{})
+
+	shutdown := InitOTLPProvider(log)
+	defer shutdown()
 
 	go func() {
 		sig := <-sigs
@@ -66,6 +72,7 @@ func command_server(log *zap.Logger, ctx *cli.Context) error {
 			}
 
 			ctx := context.WithValue(r.Context(), responseWriterKey, w)
+			ctx = logger.NewContext(ctx, log)
 
 			err = workload.Execute(ctx)
 			if err != nil {
@@ -86,6 +93,7 @@ func command_server(log *zap.Logger, ctx *cli.Context) error {
 		w.WriteHeader(http.StatusOK)
 	})
 
+	// Add Go module build info.
 	prometheus.Unregister(collectors.NewGoCollector())
 	prometheus.MustRegister(collectors.NewGoCollector(
 		collectors.WithGoCollectorRuntimeMetrics(collectors.GoRuntimeMetricsRule{Matcher: regexp.MustCompile("/.*")}),
@@ -97,8 +105,16 @@ func command_server(log *zap.Logger, ctx *cli.Context) error {
 		},
 	))
 
+	handler := otelhttp.NewHandler(mux, "",
+		otelhttp.WithSpanNameFormatter(func(operation string, r *http.Request) string {
+			return r.URL.Path
+		}),
+		otelhttp.WithTracerProvider(otel.GetTracerProvider()),
+		otelhttp.WithPropagators(otel.GetTextMapPropagator()),
+	)
+
 	port := ctx.Int64("port")
-	server := &http.Server{Addr: fmt.Sprintf(":%v", port), Handler: mux}
+	server := &http.Server{Addr: fmt.Sprintf(":%v", port), Handler: handler}
 	go func() {
 		log.Info(fmt.Sprintf("listening at %v", port))
 		err := server.ListenAndServe()

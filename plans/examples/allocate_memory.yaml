@@ -16,3 +16,5 @@ phases:
             numAllocations: 100 # Required
             leak: false # If true the memory will not be released up to leakLimitBytes
             leakLimitBytes: 3000000000 # Number of bytes which should not be released
+            reference: false # If true multiple references will be created for each allocation
+            numReferences: 10000 # Number of references to be created for each allocation

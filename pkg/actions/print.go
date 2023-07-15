@@ -15,13 +15,12 @@ type PrintConfig struct {
 func (a *Print) Execute(ctx context.Context, cfg map[string]any) error {
 	config, err := ParseConfig[PrintConfig](cfg)
 	if err != nil {
-		logger.NewLogger().Warn("failed to parse config", zap.Error(err))
+		logger.FromContext(ctx).Warn("failed to parse config", zap.Error(err))
 		return err
 	}
 
-	if logger.NewLogger() != nil {
-		logger.NewLogger().Info(config.Message)
-	}
+	logger, _ := zap.NewProduction()
+	logger.Info(config.Message)
 
 	return nil
 }

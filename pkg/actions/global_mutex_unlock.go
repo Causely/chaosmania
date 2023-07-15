@@ -17,7 +17,7 @@ type GlobalMutexUnlockConfig struct {
 func (a *GlobalMutexUnlock) Execute(ctx context.Context, cfg map[string]any) error {
 	config, err := ParseConfig[GlobalMutexUnlockConfig](cfg)
 	if err != nil {
-		logger.NewLogger().Warn("failed to parse config", zap.Error(err))
+		logger.FromContext(ctx).Warn("failed to parse config", zap.Error(err))
 		return err
 	}
 

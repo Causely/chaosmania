@@ -26,7 +26,7 @@ type BackgroundTaskConfig struct {
 func (a *BackgroundTask) Execute(ctx context.Context, cfg map[string]any) error {
 	config, err := ParseConfig[BackgroundTaskConfig](cfg)
 	if err != nil {
-		logger.NewLogger().Warn("failed to parse config", zap.Error(err))
+		logger.FromContext(ctx).Warn("failed to parse config", zap.Error(err))
 		return err
 	}
 
@@ -35,7 +35,7 @@ func (a *BackgroundTask) Execute(ctx context.Context, cfg map[string]any) error 
 
 	if _, ok := a.tasks[config.Id]; ok {
 		msg := fmt.Sprintf("background task with id %s already exists", config.Id)
-		logger.NewLogger().Warn(msg)
+		logger.FromContext(ctx).Warn(msg)
 		return fmt.Errorf(msg)
 	}
 
@@ -46,7 +46,7 @@ func (a *BackgroundTask) Execute(ctx context.Context, cfg map[string]any) error 
 
 		err := config.Workload.Execute(ctx)
 		if err != nil {
-			logger.NewLogger().Error(err.Error())
+			logger.FromContext(ctx).Error(err.Error())
 		}
 
 		a.mu.Lock()

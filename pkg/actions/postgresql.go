@@ -34,7 +34,7 @@ var PGDRIVER = "postgres"
 func (a *PostgresqlQuery) Execute(ctx context.Context, cfg map[string]any) error {
 	config, err := ParseConfig[PostgresqlQueryConfig](cfg)
 	if err != nil {
-		logger.NewLogger().Warn("failed to parse config", zap.Error(err))
+		logger.FromContext(ctx).Warn("failed to parse config", zap.Error(err))
 		return err
 	}
 
@@ -81,7 +81,7 @@ func (a *PostgresqlQuery) Execute(ctx context.Context, cfg map[string]any) error
 	connStr := fmt.Sprintf("host=%s port=%d user=%s dbname=%s password=%s sslmode=%s application_name=%s", host, port, dbname, user, password, sslmode, appname)
 	db, err := sql.Open(PGDRIVER, connStr)
 	if err != nil {
-		logger.NewLogger().Warn("failed to connect to DB", zap.Error(err))
+		logger.FromContext(ctx).Warn("failed to connect to DB", zap.Error(err))
 		return err
 	}
 
@@ -93,14 +93,14 @@ func (a *PostgresqlQuery) Execute(ctx context.Context, cfg map[string]any) error
 	for i := 0; i < repeat; i++ {
 		rows, looperr := db.QueryContext(ctx, config.Query)
 		if looperr != nil {
-			logger.NewLogger().Warn("failed to execute query", zap.Error(err))
+			logger.FromContext(ctx).Warn("failed to execute query", zap.Error(err))
 			err = looperr
 			continue
 		}
 
 		cols, err := rows.Columns()
 		if err != nil {
-			logger.NewLogger().Error("failed to list columns", zap.Error(err))
+			logger.FromContext(ctx).Error("failed to list columns", zap.Error(err))
 		}
 
 		// Create a slice to hold interface{} values for each column
@@ -113,20 +113,20 @@ func (a *PostgresqlQuery) Execute(ctx context.Context, cfg map[string]any) error
 			// Scan the values of each column in the current row
 			err := rows.Scan(values...)
 			if err != nil {
-				logger.NewLogger().Error("failed to scan row", zap.Error(err))
+				logger.FromContext(ctx).Error("failed to scan row", zap.Error(err))
 			}
 
 			// Print the values of each column
 			for i, col := range cols {
 				val := *(values[i].(*interface{}))
-				logger.NewLogger().Debug(fmt.Sprintf("%s: %v\n", col, val))
+				logger.FromContext(ctx).Debug(fmt.Sprintf("%s: %v\n", col, val))
 			}
 		}
 	}
 
 	// Now burn cpu, if configured to do so
 	if config.BurnDuration.Milliseconds() != 0 {
-		logger.NewLogger().Info("Running burn for: " + config.BurnDuration.String())
+		logger.FromContext(ctx).Info("Running burn for: " + config.BurnDuration.String())
 		end := time.Now().Add(config.BurnDuration.Duration)
 		for time.Now().Before(end) {
 		}

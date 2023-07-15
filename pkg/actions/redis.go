@@ -30,11 +30,11 @@ func InitRedis(logger *zap.Logger, application string) *redis.Client {
 func (a *RedisCommand) Execute(ctx context.Context, cfg map[string]any) error {
 	config, err := ParseConfig[RedisCommandConfig](cfg)
 	if err != nil {
-		logger.NewLogger().Warn("failed to parse config", zap.Error(err))
+		logger.FromContext(ctx).Warn("failed to parse config", zap.Error(err))
 		return err
 	}
 
-	rdb := InitRedis(logger.NewLogger(), os.Getenv("DEPLOYMENT_NAME"))
+	rdb := InitRedis(logger.FromContext(ctx), os.Getenv("DEPLOYMENT_NAME"))
 	defer rdb.Close()
 
 	switch strings.ToLower(config.Command) {
@@ -47,7 +47,7 @@ func (a *RedisCommand) Execute(ctx context.Context, cfg map[string]any) error {
 	}
 
 	if err != nil {
-		logger.NewLogger().Warn("failed to execute command", zap.Error(err))
+		logger.FromContext(ctx).Warn("failed to execute command", zap.Error(err))
 	}
 
 	return err

@@ -22,20 +22,20 @@ type HTTPRequestConfig struct {
 func (a *HTTPRequest) Execute(ctx context.Context, cfg map[string]any) error {
 	config, err := ParseConfig[HTTPRequestConfig](cfg)
 	if err != nil {
-		logger.NewLogger().Warn("failed to parse config", zap.Error(err))
+		logger.FromContext(ctx).Warn("failed to parse config", zap.Error(err))
 		return err
 	}
 
 	payloadBytes, err := json.Marshal(Convert(config.Body))
 	if err != nil {
-		logger.NewLogger().Warn("failed marshal json", zap.Error(err))
+		logger.FromContext(ctx).Warn("failed marshal json", zap.Error(err))
 		return err
 	}
 
 	// Create a new HTTP POST request with the payload
 	req, err := http.NewRequestWithContext(ctx, "POST", config.Url, bytes.NewBuffer(payloadBytes))
 	if err != nil {
-		logger.NewLogger().Warn("failed to create new request", zap.Error(err))
+		logger.FromContext(ctx).Warn("failed to create new request", zap.Error(err))
 		return err
 	}
 
@@ -46,7 +46,7 @@ func (a *HTTPRequest) Execute(ctx context.Context, cfg map[string]any) error {
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		logger.NewLogger().Warn("failed to send request", zap.Error(err))
+		logger.FromContext(ctx).Warn("failed to send request", zap.Error(err))
 		return err
 	}
 	defer resp.Body.Close()
@@ -54,7 +54,7 @@ func (a *HTTPRequest) Execute(ctx context.Context, cfg map[string]any) error {
 	if resp.StatusCode >= 400 {
 		body, err := io.ReadAll(req.Body)
 		if err != nil {
-			logger.NewLogger().Warn("failed to read body", zap.Error(err))
+			logger.FromContext(ctx).Warn("failed to read body", zap.Error(err))
 			return err
 		}
 		return fmt.Errorf("request failed (%v): %s", resp.StatusCode, string(body))

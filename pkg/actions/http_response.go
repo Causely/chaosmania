@@ -17,7 +17,7 @@ type HTTPResponseConfig struct {
 func (a *HTTPResponse) Execute(ctx context.Context, cfg map[string]any) error {
 	config, err := ParseConfig[HTTPResponseConfig](cfg)
 	if err != nil {
-		logger.NewLogger().Warn("failed to parse config", zap.Error(err))
+		logger.FromContext(ctx).Warn("failed to parse config", zap.Error(err))
 		return err
 	}
 

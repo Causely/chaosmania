@@ -96,17 +96,17 @@ func (p *Workload) Execute(ctx context.Context) error {
 		a := ACTIONS[action.Name]
 		_, err := a.ParseConfig(action.Config)
 		if err != nil {
-			logger.NewLogger().Warn("failed to parse config", zap.Error(err), zap.String("action", action.Name))
+			logger.FromContext(ctx).Warn("failed to parse config", zap.Error(err), zap.String("action", action.Name))
 			return err
 		}
 
 		if ctx.Err() != nil {
-			logger.NewLogger().Warn("context error", zap.Error(ctx.Err()), zap.String("action", action.Name))
+			logger.FromContext(ctx).Warn("context error", zap.Error(ctx.Err()), zap.String("action", action.Name))
 		}
 
 		err = a.Execute(ctx, action.Config)
 		if err != nil {
-			logger.NewLogger().Warn("action execution failed", zap.Error(err), zap.String("action", action.Name))
+			logger.FromContext(ctx).Warn("action execution failed", zap.Error(err), zap.String("action", action.Name))
 			return err
 		}
 	}

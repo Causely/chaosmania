@@ -1,0 +1,25 @@
+---
+phases:
+  - name: Phase1
+    duration: 60s
+
+    client:
+      workers: 3
+      delay: 0s
+
+    workload:
+      actions:
+        # Execute arbitrary postgresql query
+        - name: PostgresqlQuery
+          config:
+            # host: postgresql.chaosmania.svc.cluster.local
+            # port: 5432
+            # dbname: postgres
+            # user: postgres
+            # password: postgres
+            # sslmode: require
+            query: SELECT pg_sleep(0.2);
+            repeat: 100
+            maxopen: 5
+            maxidle: 10
+            # burn_duration: 1s

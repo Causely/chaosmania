@@ -1,0 +1,20 @@
+image:
+  repository: quay.io/causely/chaosmania
+  pullPolicy: Always
+  tag: "latest"
+
+resources:
+  limits:
+    cpu: 4000m
+    memory: 4Gi
+  requests:
+    cpu: 10m
+    memory: 64Mi
+
+serviceMonitor:
+  # When set true then use a serviceMonitor to configure scraping
+  enabled: false
+
+otlp:
+  endpoint: "" # http://tempo.monitoring:4318
+  insecure: true

@@ -1,0 +1,15 @@
+---
+phases:
+  - name: Phase1
+    duration: 60s
+
+    client:
+      workers: 3
+      delay: 0s
+
+    workload:
+      actions:
+        # Returns a different status code than the default 200
+        - name: HTTPResponse
+          config:
+            statusCode: 203

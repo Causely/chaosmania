@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: chaosconfig
+data:
+{{- range $path, $_ :=  .Files.Glob .Values.chaos.files }}
+{{ $path | trimPrefix "plans/"  | indent 2 }}: |-
+{{ $.Files.Get $path | indent 4 }}
+{{ end }}

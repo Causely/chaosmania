@@ -1,0 +1,15 @@
+---
+phases:
+  - name: Phase1
+    duration: 60s
+
+    client:
+      workers: 3
+      delay: 0s
+
+    workload:
+      actions:
+        # utilizing CPU for a certain duration
+        - name: Burn
+          config:
+            duration: 200ms

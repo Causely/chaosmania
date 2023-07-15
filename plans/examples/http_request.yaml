@@ -1,0 +1,21 @@
+---
+phases:
+  - name: Phase1
+    duration: 60s
+
+    client:
+      workers: 3
+      delay: 0s
+
+    workload:
+      actions:
+        # HTTP POST Request, can be used to send another execution plan to a chaosmania service
+        - name: HTTPRequest
+          config:
+            url: http://localhost:8080
+            body:
+              actions:
+                - name: AllocateMemory
+                  config:
+                    sizeBytes: 10
+                    numAllocations: 1

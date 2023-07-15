@@ -1,0 +1,26 @@
+---
+phases:
+  - name: Phase1
+    duration: 60s
+
+    client:
+      workers: 3
+      delay: 0s
+
+    setup:
+      actions:
+        - name: Print
+          config:
+            message: "Setup"
+
+    workload:
+      actions:
+        - name: Print
+          config:
+            message: "Workload"
+
+    teardown:
+      actions:
+        - name: Print
+          config:
+            message: "Teardown"

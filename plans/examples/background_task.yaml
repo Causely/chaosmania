@@ -1,0 +1,27 @@
+---
+phases:
+  - name: Phase1
+    duration: 60s
+
+    client:
+      workers: 3
+      delay: 0s
+
+    setup:
+      actions:
+        # Starts a background task for a certain `duration`
+        - name: BackgroundTask
+          config:
+            id: lock
+            duration: 10m
+            workload:
+              actions:
+                - name: Print
+                  config:
+                    message: "Print setup message"
+
+    workload:
+      actions:
+        - name: Print
+          config:
+            message: "Print message"

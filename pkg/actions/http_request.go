@@ -9,6 +9,7 @@ import (
 	"net/http"
 
 	"github.com/Causely/chaosmania/pkg/logger"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.uber.org/zap"
 )
 
@@ -43,7 +44,9 @@ func (a *HTTPRequest) Execute(ctx context.Context, cfg map[string]any) error {
 	req.Header.Set("Content-Type", "application/json")
 
 	// Send the request to the server
-	client := &http.Client{}
+	client := &http.Client{
+		Transport: otelhttp.NewTransport(http.DefaultTransport),
+	}
 	resp, err := client.Do(req)
 	if err != nil {
 		logger.FromContext(ctx).Warn("failed to send request", zap.Error(err))

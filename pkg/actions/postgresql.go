@@ -3,6 +3,7 @@ package actions
 import (
 	"context"
 	"fmt"
+	"log"
 	"time"
 
 	"database/sql"
@@ -11,6 +12,8 @@ import (
 	_ "github.com/lib/pq"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+	"go.nhat.io/otelsql"
+	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
 	"go.uber.org/zap"
 )
 
@@ -36,7 +39,22 @@ type PostgresqlQueryConfig struct {
 	BurnDuration Duration `json:"burn_duration"`
 }
 
-var PGDRIVER = "postgres"
+var PGDRIVER string
+
+func init() {
+	driverName, err := otelsql.Register("postgres",
+		otelsql.TraceQueryWithoutArgs(),
+		otelsql.TraceRowsClose(),
+		otelsql.TraceRowsAffected(),
+		otelsql.WithSystem(semconv.DBSystemPostgreSQL), // Optional.
+	)
+
+	PGDRIVER = driverName
+
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+}
 
 func (a *PostgresqlQuery) Execute(ctx context.Context, cfg map[string]any) error {
 	config, err := ParseConfig[PostgresqlQueryConfig](cfg)

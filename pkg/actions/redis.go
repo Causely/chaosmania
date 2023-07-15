@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/Causely/chaosmania/pkg/logger"
+	"github.com/redis/go-redis/extra/redisotel/v9"
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 )
@@ -24,6 +25,15 @@ func InitRedis(logger *zap.Logger, application string) *redis.Client {
 		DB:   0,
 	})
 
+	// Enable opentelemetry traces for redis
+	err := redisotel.InstrumentMetrics(rdb)
+	if err != nil {
+		logger.Error("failed to enable redis openmetrics", zap.Error(err))
+	}
+	err = redisotel.InstrumentTracing(rdb)
+	if err != nil {
+		logger.Error("failed to enable redis opentracing", zap.Error(err))
+	}
 	return rdb
 }
 

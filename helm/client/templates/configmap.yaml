@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: chaosconfig
+  name: {{include "client.fullname" .}}-chaosconfig
 data:
 {{- range $path, $_ :=  .Files.Glob .Values.chaos.files }}
 {{ $path | trimPrefix "plans/"  | indent 2 }}: |-

@@ -25,5 +25,5 @@ spec:
       volumes:
         - name: chaos-volume
           configMap:
-            name: chaosconfig
+            name: {{include "client.fullname" .}}-chaosconfig
       restartPolicy: Never

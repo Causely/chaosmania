@@ -10,7 +10,7 @@ require (
 	github.com/redis/go-redis/v9 v9.1.0
 	github.com/rotisserie/eris v0.5.4
 	github.com/urfave/cli/v2 v2.25.7
-	go.nhat.io/otelsql v0.11.1
+	go.nhat.io/otelsql v0.12.0
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.43.0
 	go.opentelemetry.io/otel v1.17.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.17.0

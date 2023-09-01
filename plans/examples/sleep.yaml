@@ -1,11 +1,12 @@
 ---
 phases:
   - name: Phase1
-    duration: 60s
 
     client:
-      workers: 3
-      delay: 0s
+      workers:
+        - instances: 1
+          duration: 5m
+          delay: 10ms
 
     workload:
       actions:

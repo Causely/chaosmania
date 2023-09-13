@@ -11,7 +11,7 @@ require (
 	github.com/rotisserie/eris v0.5.4
 	github.com/urfave/cli/v2 v2.25.7
 	go.nhat.io/otelsql v0.12.0
-	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.43.0
+	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.44.0
 	go.opentelemetry.io/otel v1.18.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.18.0
 	go.opentelemetry.io/otel/sdk v1.18.0

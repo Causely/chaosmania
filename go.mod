@@ -7,7 +7,7 @@ require (
 	github.com/lib/pq v1.10.9
 	github.com/prometheus/client_golang v1.16.0
 	github.com/redis/go-redis/extra/redisotel/v9 v9.0.5
-	github.com/redis/go-redis/v9 v9.1.0
+	github.com/redis/go-redis/v9 v9.2.0
 	github.com/rotisserie/eris v0.5.4
 	github.com/urfave/cli/v2 v2.25.7
 	go.nhat.io/otelsql v0.12.0

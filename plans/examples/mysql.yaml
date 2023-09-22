@@ -1,11 +1,12 @@
 ---
 phases:
   - name: Phase1
-    duration: 60s
 
     client:
-      workers: 3
-      delay: 0s
+      workers:
+        - instances: 1
+          duration: 5m
+          delay: 10ms
 
     workload:
       actions:
@@ -14,7 +15,7 @@ phases:
           config:
             # host: mysql.chaosmania.svc.cluster.local
             dbname: performance_schema
-            query:  select * from events_statements_history
+            query: select * from events_statements_history
             repeat: 100
             maxopen: 5
             maxidle: 10

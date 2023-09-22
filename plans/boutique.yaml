@@ -1,11 +1,12 @@
 ---
 phases:
   - name: Just load
-    duration: 3000s
 
     client:
-      workers: 30
-      delay: 0ms
+      workers:
+        - instances: 1
+          duration: 5m
+          delay: 10ms
 
     workload:
       actions:

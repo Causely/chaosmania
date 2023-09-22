@@ -1,0 +1,114 @@
+---
+phases:
+  - name: Phase1
+
+    repeat: 5
+
+    client:
+      workers:
+        - instances: 1
+          duration: 5m
+          delay: 10ms
+        - instances: 2
+          duration: 5m
+          delay: 10ms
+        - instances: 3
+          duration: 5m
+          delay: 10ms
+        - instances: 4
+          duration: 5m
+          delay: 10ms
+        - instances: 5
+          duration: 5m
+          delay: 10ms
+        - instances: 6
+          duration: 10m
+          delay: 10ms
+        - instances: 5
+          duration: 5m
+          delay: 10ms
+        - instances: 4
+          duration: 5m
+          delay: 10ms
+        - instances: 3
+          duration: 5m
+          delay: 10ms
+        - instances: 2
+          duration: 5m
+          delay: 10ms
+        - instances: 1
+          duration: 5m
+          delay: 10ms
+
+    workload:
+      # Topology:
+      # Frontend -> Ad -> Shipping
+      #          -> Cart
+      #          -> Recommendation -> Shipping
+      #                            -> Currency
+      actions:
+        # Send request to ad
+        - name: HTTPRequest
+          config:
+            url: http://ad:8080
+            body:
+              actions:
+                - name: AllocateMemory
+                  config:
+                    sizeBytes: 10000
+                    numAllocations: 100
+
+                # Send request to shipping
+                - name: HTTPRequest
+                  config:
+                    url: http://shipping:8080
+                    body:
+                      actions:
+                        - name: AllocateMemory
+                          config:
+                            sizeBytes: 10000
+                            numAllocations: 100
+
+        # Send request to cart
+        - name: HTTPRequest
+          config:
+            url: http://cart:8080
+            body:
+              actions:
+                - name: AllocateMemory
+                  config:
+                    sizeBytes: 10000
+                    numAllocations: 100
+
+        # Send request to recommendation
+        - name: HTTPRequest
+          config:
+            url: http://recommendation:8080
+            body:
+              actions:
+                - name: AllocateMemory
+                  config:
+                    sizeBytes: 10000
+                    numAllocations: 100
+
+                # Send request to shipping
+                - name: HTTPRequest
+                  config:
+                    url: http://shipping:8080
+                    body:
+                      actions:
+                        - name: AllocateMemory
+                          config:
+                            sizeBytes: 10000
+                            numAllocations: 100
+
+                # Send request to shipping
+                - name: HTTPRequest
+                  config:
+                    url: http://currency:8080
+                    body:
+                      actions:
+                        - name: AllocateMemory
+                          config:
+                            sizeBytes: 10000
+                            numAllocations: 100

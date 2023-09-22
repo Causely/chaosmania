@@ -22,23 +22,28 @@ type ActionConfig struct {
 	Config map[string]any `json:"config"`
 }
 
+type Workers struct {
+	Instances uint          `json:"instances" yaml:"instances"`
+	Duration  time.Duration `json:"duration" yaml:"duration"`
+	Delay     time.Duration `json:"delay" yaml:"delay"`
+	Timeout   time.Duration `json:"timeout" yaml:"timeout"`
+}
+
 type Phase struct {
-	Name     string        `json:"name"`
-	Duration time.Duration `json:"duration"`
-	Client   Client        `json:"client"`
-	Setup    Workload      `json:"setup"`
-	Workload Workload      `json:"workload"`
-	Teardown Workload      `json:"teardown"`
+	Name     string   `json:"name" yaml:"name"`
+	Client   Client   `json:"client" yaml:"client"`
+	Setup    Workload `json:"setup" yaml:"setup"`
+	Workload Workload `json:"workload" yaml:"workload"`
+	Teardown Workload `json:"teardown" yaml:"teardown"`
+	Repeat   uint     `json:"repeat" yaml:"repeat"`
 }
 
 type Workload struct {
-	Actions []ActionConfig `json:"actions"`
+	Actions []ActionConfig `yaml:"actions" json:"actions"`
 }
 
 type Client struct {
-	Delay   time.Duration `json:"delay"`
-	Timeout time.Duration `json:"timeout"`
-	Workers int           `json:"workers"`
+	Workers []Workers `yaml:"workers" json:"workers"`
 }
 
 type Plan struct {

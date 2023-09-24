@@ -62,6 +62,8 @@ Create the name of the service account to use
 {{- end }}
 
 {{- define "common.env" }}
+- name: DOMAIN
+  value: {{ .Chart.Name }}
 - name: NAMESPACE
   valueFrom:
     fieldRef:
@@ -69,7 +71,7 @@ Create the name of the service account to use
 - name: DEPLOYMENT_NAME
   valueFrom:
     fieldRef:
-      fieldPath: metadata.labels['app']
+      fieldPath: metadata.labels['app.kubernetes.io/name']
 {{ end -}}
 
 {{- define "otel.env" }}

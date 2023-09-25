@@ -5,6 +5,7 @@ metadata:
   labels:
     {{- include "client.labels" . | nindent 4 }}
 spec:
+  ttlSecondsAfterFinished: 60
   template:
     spec:
       containers:

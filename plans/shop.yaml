@@ -1,0 +1,37 @@
+---
+phases:
+  - name: ShopPhase
+
+    client:
+      workers:
+        - instances: 10
+          duration: 1h
+          delay: 0ms
+
+    workload:
+      actions:
+        # Send request to ad to look up in postgres
+        - name: HTTPRequest
+          config:
+            url: http://ad:8080
+            body:
+              actions:
+                # Execute arbitrary postgresql query
+                - name: PostgresqlQuery
+                  config:
+                    query: SELECT pg_sleep(0.1);
+                    maxopen: 5
+                    maxidle: 10
+
+        # Send request to cart to push messages into the queue
+        - name: HTTPRequest
+          config:
+            url: http://cart:8080
+            body:
+              actions:
+                - name: RedisCommand
+                  config:
+                    command: lpush
+                    args:
+                      - key1
+                      - nmyGdeEqASYqvLmaoFuYvrm3w0qWiumB2oex7QSVRmMQI9OwdFPfcDJXRb27wlIkOGwUWLg6TkitcWga0EbWjFP4brn7wYzAhSyyhwWWnqtjkzI2cS2fjmDLatPbCMzYBueb3ZlqlkFguR96qlqO4mR2zXZ8CGVdkOnivxYAIkKBYg5T6hueN2HVoJp2TyKbOPZRguG89Kf5JVUdUEGSUfwP3DP2jmFE3zolg2VXb2FR9ESMsszF2YKuxVjhszMpeyyzmFOOgMCBX0a6p3akvKOpj7n3mGxZ9reu0gtNWZCsyE8boHlDvx11Vfq7RoXgk5zxtPJMys1B1SrUfzn50xJIj5heLfHqxNfehsf33aqLNfUsBewh9HJOMsCWxg13dPUtI3sGHMtikLLyoKDSIJpFT5FqBzb0Yb5BrH5XgT92PLVMCW1BcxcnE0MI2uvBxY4VXf94ONCYb7KZdi7CIpPlQBFueDRXo24N2Wv0zpeXPXCVW3fQwxtmdnI8ENITrOTPELJQsiodwJiKjdsMA7VQzHPUyPsgoOY2m2Ml23K9EyXoB6BtBJpMw4aoIFsWYp3tDiiMHORQY9367RJz2XzbvMbFdS92GmfKfGMkujX8mu7dIug9p07MDe0bHaLb3AGY3PRTNcnkEwr45EE72VwH6d1vDP6zMioRhVHygo2SlWI2EJaZG3o0qUi4MX37YoFrRn2vB1aeMpSkPV55onCHa3JtZpd8vxSGMrw9LcZk2Rak9KgRtAJi8osypK5EgP7xuiCBCv9QYPMReS1kUvfVX68LcpH4Lae8snulbxhDSRu4bpqn4R2qOtbKhuilKvy1RLtgqlGShJy2syu07LFyBV9XiAJfXsDg0iy34PX7pBbF8YUmEDjd30PqLSVYqe51OSZ4BU8TgPoRl4z52HrkauYLF8bd6jQwAxHFoteYr3Zm1l7fWFM4jfIg2RzBEkZVVs5Z3f0TIZjD2Iz5Kll7dWVJvgU549ZM2Cv1Bs3eu3glQKPumRRGKMMxrMJu

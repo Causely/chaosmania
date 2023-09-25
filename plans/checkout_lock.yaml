@@ -1,0 +1,42 @@
+---
+phases:
+  - name: CheckoutPhase
+
+    client:
+      workers:
+        - instances: 10
+          duration: 1h
+          delay: 0ms
+
+    workload:
+      actions:
+        # Send request to shipping to read order from the queue
+        - name: HTTPRequest
+          config:
+            url: http://shipping:8080
+            body:
+              actions:
+                - name: RedisCommand
+                  config:
+                    command: lpop
+                    args:
+                      - key1
+                # Send request to currency to look up from postgres
+                - name: HTTPRequest
+                  config:
+                    url: http://productcatalog:8080
+                    body:
+                      actions:
+                        # Lock a mutex. Locks are identified by `id`.
+                        - name: GlobalMutexLock
+                          config:
+                            id: global_lock
+
+                        - name: Sleep
+                          config:
+                            duration: 1s
+
+                        # Unlock the mutex.
+                        - name: GlobalMutexUnlock
+                          config:
+                            id: global_lock

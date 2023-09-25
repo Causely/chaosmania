@@ -1,0 +1,35 @@
+---
+phases:
+  - name: CheckoutPhase
+
+    client:
+      workers:
+        - instances: 10
+          duration: 1h
+          delay: 0ms
+
+    workload:
+      actions:
+        # Send request to shipping to read order from the queue
+        - name: HTTPRequest
+          config:
+            url: http://shipping:8080
+            body:
+              actions:
+                - name: RedisCommand
+                  config:
+                    command: lpop
+                    args:
+                      - key1
+                # Send request to currency to look up from postgres
+                - name: HTTPRequest
+                  config:
+                    url: http://currency:8080
+                    body:
+                      actions:
+                        # Execute arbitrary postgresql query
+                        - name: PostgresqlQuery
+                          config:
+                            query: SELECT pg_sleep(1);
+                            maxopen: 5
+                            maxidle: 10

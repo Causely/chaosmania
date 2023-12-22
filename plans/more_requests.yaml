@@ -1,0 +1,143 @@
+---
+phases:
+  - name: Allocate memory
+
+    client:
+      workers:
+        - instances: 10
+          duration: 60h
+          delay: 0ms
+
+    workload:
+      actions:
+        # Send request to ad
+        - name: HTTPRequest
+          config:
+            url: http://ad:8080
+            body:
+              actions:
+                - name: AllocateMemory
+                  config:
+                    sizeBytes: 100
+                    numAllocations: 100
+
+                # Send request to productcatalog
+                - name: HTTPRequest
+                  config:
+                    url: http://productcatalog:8080
+                    body:
+                      actions:
+                        - name: AllocateMemory
+                          config:
+                            sizeBytes: 100
+                            numAllocations: 100
+
+                        - name: Burn
+                          config:
+                            duration: 200ms
+
+        # Send request to recommendation
+        - name: HTTPRequest
+          config:
+            url: http://recommendation:8080
+            body:
+              actions:
+                # Send request to currency
+                - name: HTTPRequest
+                  config:
+                    url: http://currency:8080
+                    body:
+                      actions:
+                        - name: AllocateMemory
+                          config:
+                            sizeBytes: 100
+                            numAllocations: 100
+
+                        - name: Burn
+                          config:
+                            duration: 200ms
+
+                        # Execute redis commands
+                        - name: RedisCommand
+                          config:
+                            command: lpush
+                            args:
+                              - key1
+                              - value1
+
+                - name: AllocateMemory
+                  config:
+                    sizeBytes: 100
+                    numAllocations: 100
+
+                # Send request to productcatalog
+                - name: HTTPRequest
+                  config:
+                    url: http://productcatalog:8080
+                    body:
+                      actions:
+                        - name: AllocateMemory
+                          config:
+                            sizeBytes: 100
+                            numAllocations: 100
+
+                        - name: Burn
+                          config:
+                            duration: 200ms
+
+                        - name: PostgresqlQuery
+                          config:
+                            # host: postgresql.chaosmania.svc.cluster.local
+                            # port: 5432
+                            # dbname: postgres
+                            # user: postgres
+                            # password: postgres
+                            # sslmode: require
+                            query: SELECT pg_sleep(0.2);
+                            repeat: 100
+                            maxopen: 5
+                            maxidle: 10
+                            # burn_duration: 1s
+
+        # Send request to shipping
+        - name: HTTPRequest
+          config:
+            url: http://shipping:8080
+            body:
+              actions:
+                - name: AllocateMemory
+                  config:
+                    sizeBytes: 100
+                    numAllocations: 100
+
+                # Send request to cart
+                - name: HTTPRequest
+                  config:
+                    url: http://cart:8080
+                    body:
+                      actions:
+                        - name: AllocateMemory
+                          config:
+                            sizeBytes: 100
+                            numAllocations: 100
+
+                        # Send request to currency
+                        - name: HTTPRequest
+                          config:
+                            url: http://currency:8080
+                            body:
+                              actions:
+                                - name: AllocateMemory
+                                  config:
+                                    sizeBytes: 100
+                                    numAllocations: 100
+
+                                - name: Burn
+                                  config:
+                                    duration: 200ms
+
+                                - name: RedisCommand
+                                  config:
+                                    command: lpop
+                                    args:
+                                      - key1

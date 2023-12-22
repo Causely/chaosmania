@@ -1,0 +1,24 @@
+phases:
+  - name: Phase1
+
+    client:
+      workers:
+        - instances: 10
+          duration: 10m
+          delay: 0s
+
+    workload:
+      actions:
+        # Lock a mutex. Locks are identified by `id`.
+        - name: GlobalMutexLock
+          config:
+            id: global_lock
+
+        - name: Sleep
+          config:
+            duration: 10s
+
+        # Unlock the mutex.
+        - name: GlobalMutexUnlock
+          config:
+            id: global_lock

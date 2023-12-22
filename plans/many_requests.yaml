@@ -4,9 +4,9 @@ phases:
 
     client:
       workers:
-        - instances: 1
-          duration: 5m
-          delay: 10ms
+        - instances: 10
+          duration: 60h
+          delay: 0ms
 
     workload:
       actions:
@@ -42,6 +42,10 @@ phases:
                           config:
                             sizeBytes: 100
                             numAllocations: 100
+
+                        - name: Burn
+                          config:
+                            duration: 200ms
 
         # Send request to shipping
         - name: HTTPRequest

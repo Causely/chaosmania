@@ -5,17 +5,11 @@ phases:
     client:
       workers:
         - instances: 1
-          duration: 5m
+          duration: 6h
           delay: 10ms
 
     setup:
       actions:
-        - name: AllocateMemory
-          config:
-            sizeBytes: 1000000000
-            numAllocations: 1
-            leak: true
-
         # Send request to ad
         - name: HTTPRequest
           config:
@@ -24,44 +18,8 @@ phases:
               actions:
                 - name: AllocateMemory
                   config:
-                    sizeBytes: 1000000000
-                    numAllocations: 2
-                    leak: true
-
-        # Send request to recommendation
-        - name: HTTPRequest
-          config:
-            url: http://recommendation:8080
-            body:
-              actions:
-                - name: AllocateMemory
-                  config:
-                    sizeBytes: 1000000000
-                    numAllocations: 2
-                    leak: true
-
-        # Send request to recommendation
-        - name: HTTPRequest
-          config:
-            url: http://productcatalog:8080
-            body:
-              actions:
-                - name: AllocateMemory
-                  config:
-                    sizeBytes: 1000000000
-                    numAllocations: 2
-                    leak: true
-
-        # Send request to shipping
-        - name: HTTPRequest
-          config:
-            url: http://shipping:8080
-            body:
-              actions:
-                - name: AllocateMemory
-                  config:
-                    sizeBytes: 1000000000
-                    numAllocations: 2
+                    sizeBytes: 900000000
+                    numAllocations: 4
                     leak: true
 
         # Send request to cart
@@ -72,8 +30,8 @@ phases:
               actions:
                 - name: AllocateMemory
                   config:
-                    sizeBytes: 1000000000
-                    numAllocations: 2
+                    sizeBytes: 900000000
+                    numAllocations: 4
                     leak: true
 
         # Send request to currency
@@ -84,8 +42,44 @@ phases:
               actions:
                 - name: AllocateMemory
                   config:
-                    sizeBytes: 1000000000
-                    numAllocations: 2
+                    sizeBytes: 900000000
+                    numAllocations: 4
+                    leak: true
+
+        # Send request to productcatalog
+        - name: HTTPRequest
+          config:
+            url: http://productcatalog:8080
+            body:
+              actions:
+                - name: AllocateMemory
+                  config:
+                    sizeBytes: 900000000
+                    numAllocations: 4
+                    leak: true
+
+        # Send request to shipping
+        - name: HTTPRequest
+          config:
+            url: http://shipping:8080
+            body:
+              actions:
+                - name: AllocateMemory
+                  config:
+                    sizeBytes: 900000000
+                    numAllocations: 4
+                    leak: true
+
+        # Send request to recommendation
+        - name: HTTPRequest
+          config:
+            url: http://recommendation:8080
+            body:
+              actions:
+                - name: AllocateMemory
+                  config:
+                    sizeBytes: 100000000
+                    numAllocations: 4
                     leak: true
 
     workload:
@@ -98,9 +92,38 @@ phases:
               actions:
                 - name: AllocateMemory
                   config:
-                    sizeBytes: 1000
-                    numAllocations: 100
+                    sizeBytes: 1000000
+                    numAllocations: 10
                     leak: true
+
+                - name: Sleep
+                  config:
+                    duration: 10s
+
+        # Send request to cart
+        - name: HTTPRequest
+          config:
+            url: http://cart:8080
+            body:
+              actions:
+                - name: AllocateMemory
+                  config:
+                    sizeBytes: 4000
+                    numAllocations: 10000
+
+        # Send request to currency
+        - name: HTTPRequest
+          config:
+            url: http://currency:8080
+            body:
+              actions:
+                - name: AllocateMemory
+                  config:
+                    sizeBytes: 4000
+                    numAllocations: 100
+                - name: Sleep
+                  config:
+                    duration: 100ms
 
         # Send request to recommendation
         - name: HTTPRequest
@@ -110,7 +133,7 @@ phases:
               actions:
                 - name: AllocateMemory
                   config:
-                    sizeBytes: 100
+                    sizeBytes: 4000
                     numAllocations: 100
 
                 - name: Sleep
@@ -125,7 +148,7 @@ phases:
                       actions:
                         - name: AllocateMemory
                           config:
-                            sizeBytes: 100
+                            sizeBytes: 4000
                             numAllocations: 100
 
                         - name: Sleep
@@ -140,32 +163,7 @@ phases:
               actions:
                 - name: AllocateMemory
                   config:
-                    sizeBytes: 100
-                    numAllocations: 100
-                - name: Sleep
-                  config:
-                    duration: 100ms
-
-        # Send request to cart
-        - name: HTTPRequest
-          config:
-            url: http://cart:8080
-            body:
-              actions:
-                - name: AllocateMemory
-                  config:
-                    sizeBytes: 100
-                    numAllocations: 10000
-
-        # Send request to currency
-        - name: HTTPRequest
-          config:
-            url: http://currency:8080
-            body:
-              actions:
-                - name: AllocateMemory
-                  config:
-                    sizeBytes: 100
+                    sizeBytes: 4000
                     numAllocations: 100
                 - name: Sleep
                   config:

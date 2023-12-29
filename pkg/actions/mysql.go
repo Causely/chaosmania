@@ -3,7 +3,6 @@ package actions
 import (
 	"context"
 	"fmt"
-	"log"
 	"strconv"
 	"time"
 
@@ -40,24 +39,29 @@ type MysqlQueryConfig struct {
 	BurnDuration Duration `json:"burn_duration"`
 }
 
-var MYDRIVER string
-
-func init() {
+func openMysql(dsn string, host string, port int, dbname string) (*sql.DB, error) {
+	// Register the otelsql wrapper for the provided mysql driver.
 	driverName, err := otelsql.Register("mysql",
+		otelsql.AllowRoot(),
 		otelsql.TraceQueryWithoutArgs(),
 		otelsql.TraceRowsClose(),
 		otelsql.TraceRowsAffected(),
-		otelsql.WithSystem(semconv.DBSystemMySQL), // Optional.
+		otelsql.WithDatabaseName(dbname),
+		otelsql.WithSystem(semconv.DBSystemMySQL),
+		otelsql.WithDefaultAttributes(
+			semconv.NetPeerName(host),
+			semconv.NetPeerPort(port),
+		),
 	)
-
-	MYDRIVER = driverName
-
 	if err != nil {
-		log.Fatal(err.Error())
+		return nil, err
 	}
+
+	// Connect to a Mysql database using the mysql driver wrapper.
+	return sql.Open(driverName, dsn)
 }
 
-func (a *MysqlQuery) Execute(ctx context.Context, cfg map[string]any) error {
+func (action *MysqlQuery) Execute(ctx context.Context, cfg map[string]any) error {
 	config, err := ParseConfig[MysqlQueryConfig](cfg)
 	if err != nil {
 		logger.FromContext(ctx).Warn("failed to parse config", zap.Error(err))
@@ -118,7 +122,7 @@ func (a *MysqlQuery) Execute(ctx context.Context, cfg map[string]any) error {
 	//}
 	//db, err := sql.Open(MYDRIVER, mysqlConfig.FormatDSN())
 	connStr := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?tls=%s", user, password, host, strconv.Itoa(port), dbname, sslmode)
-	db, err := sql.Open(MYDRIVER, connStr)
+	db, err := openMysql(connStr, host, port, dbname)
 	if err != nil {
 		logger.FromContext(ctx).Warn("failed to connect to DB", zap.Error(err))
 		return err
@@ -178,7 +182,7 @@ func (a *MysqlQuery) Execute(ctx context.Context, cfg map[string]any) error {
 	return nil
 }
 
-func (a *MysqlQuery) ParseConfig(data map[string]any) (any, error) {
+func (action *MysqlQuery) ParseConfig(data map[string]any) (any, error) {
 	return ParseConfig[MysqlQueryConfig](data)
 }
 

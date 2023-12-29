@@ -9,6 +9,7 @@ import (
 	"github.com/Causely/chaosmania/pkg/logger"
 	"github.com/redis/go-redis/extra/redisotel/v9"
 	"github.com/redis/go-redis/v9"
+	"go.opentelemetry.io/otel/semconv/v1.21.0"
 	"go.uber.org/zap"
 )
 
@@ -25,19 +26,23 @@ func InitRedis(logger *zap.Logger, application string) *redis.Client {
 		DB:   0,
 	})
 
-	// Enable opentelemetry traces for redis
+	// Enable opentelemetry for redis
 	err := redisotel.InstrumentMetrics(rdb)
 	if err != nil {
-		logger.Error("failed to enable redis openmetrics", zap.Error(err))
+		logger.Error("failed to enable redis opentelemetry metrics", zap.Error(err))
 	}
-	err = redisotel.InstrumentTracing(rdb)
+	err = redisotel.InstrumentTracing(rdb,
+		redisotel.WithAttributes(
+			semconv.NetPeerName("redis"),
+			semconv.NetPeerPort(6379),
+		))
 	if err != nil {
-		logger.Error("failed to enable redis opentracing", zap.Error(err))
+		logger.Error("failed to enable redis opentelemetry tracing", zap.Error(err))
 	}
 	return rdb
 }
 
-func (a *RedisCommand) Execute(ctx context.Context, cfg map[string]any) error {
+func (action *RedisCommand) Execute(ctx context.Context, cfg map[string]any) error {
 	config, err := ParseConfig[RedisCommandConfig](cfg)
 	if err != nil {
 		logger.FromContext(ctx).Warn("failed to parse config", zap.Error(err))
@@ -63,7 +68,7 @@ func (a *RedisCommand) Execute(ctx context.Context, cfg map[string]any) error {
 	return err
 }
 
-func (a *RedisCommand) ParseConfig(data map[string]any) (any, error) {
+func (action *RedisCommand) ParseConfig(data map[string]any) (any, error) {
 	return ParseConfig[RedisCommandConfig](data)
 }
 

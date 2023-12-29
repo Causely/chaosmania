@@ -3,7 +3,6 @@ package actions
 import (
 	"context"
 	"fmt"
-	"log"
 	"time"
 
 	"database/sql"
@@ -39,24 +38,29 @@ type PostgresqlQueryConfig struct {
 	BurnDuration Duration `json:"burn_duration"`
 }
 
-var PGDRIVER string
-
-func init() {
+func openPostgres(dsn string, host string, port int, dbname string) (*sql.DB, error) {
+	// Register the otelsql wrapper for the provided postgres driver.
 	driverName, err := otelsql.Register("postgres",
+		otelsql.AllowRoot(),
 		otelsql.TraceQueryWithoutArgs(),
 		otelsql.TraceRowsClose(),
 		otelsql.TraceRowsAffected(),
+		otelsql.WithDatabaseName(dbname),               // Optional.
 		otelsql.WithSystem(semconv.DBSystemPostgreSQL), // Optional.
+		otelsql.WithDefaultAttributes(
+			semconv.NetPeerName(host),
+			semconv.NetPeerPort(port),
+		),
 	)
-
-	PGDRIVER = driverName
-
 	if err != nil {
-		log.Fatal(err.Error())
+		return nil, err
 	}
+
+	// Connect to a Postgres database using the postgres driver wrapper.
+	return sql.Open(driverName, dsn)
 }
 
-func (a *PostgresqlQuery) Execute(ctx context.Context, cfg map[string]any) error {
+func (action *PostgresqlQuery) Execute(ctx context.Context, cfg map[string]any) error {
 	config, err := ParseConfig[PostgresqlQueryConfig](cfg)
 	if err != nil {
 		logger.FromContext(ctx).Warn("failed to parse config", zap.Error(err))
@@ -104,7 +108,7 @@ func (a *PostgresqlQuery) Execute(ctx context.Context, cfg map[string]any) error
 		appname = config.AppName
 	}
 	connStr := fmt.Sprintf("host=%s port=%d user=%s dbname=%s password=%s sslmode=%s application_name=%s", host, port, dbname, user, password, sslmode, appname)
-	db, err := sql.Open(PGDRIVER, connStr)
+	db, err := openPostgres(connStr, host, port, dbname)
 	if err != nil {
 		logger.FromContext(ctx).Warn("failed to connect to DB", zap.Error(err))
 		return err
@@ -162,7 +166,7 @@ func (a *PostgresqlQuery) Execute(ctx context.Context, cfg map[string]any) error
 	return err
 }
 
-func (a *PostgresqlQuery) ParseConfig(data map[string]any) (any, error) {
+func (action *PostgresqlQuery) ParseConfig(data map[string]any) (any, error) {
 	return ParseConfig[PostgresqlQueryConfig](data)
 }
 

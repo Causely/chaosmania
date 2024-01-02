@@ -1,0 +1,28 @@
+---
+phases:
+  - name: Phase1
+
+    client:
+      workers:
+        - instances: 25
+          duration: 30m
+          delay: 10ms
+
+    workload:
+      actions:
+        - name: MongodbQuery
+          config:
+            query:
+              find: "orders"   # The command to 'find' documents in the 'collection orders'
+            dbname: orders
+            connection:
+              conn_scheme: mongodb
+              hosts:
+                - mongodb.robot-shop.svc.cluster.local
+              port: 27017
+              op_timeout_ms: 1000 * 60 * 2
+              connecting_timeout_ms: 0 # zero for no limit
+            maxopen: 300
+            maxidle: 100
+            repeat: 300
+            burn_duration: 3s

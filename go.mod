@@ -7,7 +7,7 @@ require (
 	github.com/lib/pq v1.10.9
 	github.com/prometheus/client_golang v1.18.0
 	github.com/redis/go-redis/extra/redisotel/v9 v9.0.5
-	github.com/redis/go-redis/v9 v9.3.1
+	github.com/redis/go-redis/v9 v9.4.0
 	github.com/rotisserie/eris v0.5.4
 	github.com/urfave/cli/v2 v2.27.1
 	go.mongodb.org/mongo-driver v1.13.1

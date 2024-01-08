@@ -216,13 +216,13 @@ func (a *MongoDBQuery) Execute(ctx context.Context, cfg map[string]any) error {
 		command, err := bson.Marshal(query)
 		if err != nil {
 			logger.FromContext(ctx).Warn("failed to marshal query", zap.Error(err))
-			continue
+			return err
 		}
 
 		cursor, err = db.RunCommandCursor(ctx, command)
 		if err != nil {
 			logger.FromContext(ctx).Warn("failed to execute query", zap.Error(err))
-			continue
+			return err
 		}
 
 		var results []bson.M
@@ -230,7 +230,7 @@ func (a *MongoDBQuery) Execute(ctx context.Context, cfg map[string]any) error {
 			var result bson.M
 			if err := cursor.Decode(&result); err != nil {
 				logger.FromContext(ctx).Error("failed to decode cursor", zap.Error(err))
-				continue
+				return err
 			}
 			results = append(results, result)
 		}
@@ -238,7 +238,7 @@ func (a *MongoDBQuery) Execute(ctx context.Context, cfg map[string]any) error {
 		// Check for errors during cursor iteration
 		if err := cursor.Err(); err != nil {
 			logger.FromContext(ctx).Error("failed to iterate cursor", zap.Error(err))
-			continue
+			return err
 		}
 
 		// Print the results

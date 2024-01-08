@@ -7,6 +7,7 @@ phases:
         - instances: 10
           duration: 60h
           delay: 0ms
+          timeout: 30s
 
     workload:
       actions:

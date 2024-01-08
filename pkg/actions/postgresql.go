@@ -123,9 +123,8 @@ func (action *PostgresqlQuery) Execute(ctx context.Context, cfg map[string]any) 
 		now := time.Now()
 		rows, looperr := db.QueryContext(ctx, config.Query)
 		if looperr != nil {
-			logger.FromContext(ctx).Warn("failed to execute query", zap.Error(err))
-			err = looperr
-			continue
+			logger.FromContext(ctx).Warn("failed to execute query", zap.Error(looperr))
+			return looperr
 		}
 
 		cols, err := rows.Columns()

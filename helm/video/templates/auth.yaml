@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth
+  labels:
+    {{include "common.labels" "auth" | nindent 4}}
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      {{include "common.labels" "auth" | nindent 6}}
+  template:
+    metadata:
+      labels:
+        {{include "common.labels" "auth" | nindent 8}}
+    spec:
+      containers: 
+      {{include "chaosmania.container" . | nindent 6}}
+      volumes:
+      {{include "common.volumes" . | nindent 6}}
+---
+{{include "chaosmania.service" "auth"}}
+---
+{{ if .Values.hpa.enabled }}
+{{ include "chaosmania.hpa" "auth" }}
+{{ end }}

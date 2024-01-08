@@ -3,6 +3,7 @@ package actions
 import (
 	"context"
 
+	"github.com/Causely/chaosmania/pkg"
 	"github.com/Causely/chaosmania/pkg/logger"
 	"go.uber.org/zap"
 )
@@ -15,7 +16,7 @@ type GlobalMutexUnlockConfig struct {
 }
 
 func (a *GlobalMutexUnlock) Execute(ctx context.Context, cfg map[string]any) error {
-	config, err := ParseConfig[GlobalMutexUnlockConfig](cfg)
+	config, err := pkg.ParseConfig[GlobalMutexUnlockConfig](cfg)
 	if err != nil {
 		logger.FromContext(ctx).Warn("failed to parse config", zap.Error(err))
 		return err
@@ -33,7 +34,7 @@ func (a *GlobalMutexUnlock) Execute(ctx context.Context, cfg map[string]any) err
 }
 
 func (a *GlobalMutexUnlock) ParseConfig(data map[string]any) (any, error) {
-	c, err := ParseConfig[GlobalMutexUnlockConfig](data)
+	c, err := pkg.ParseConfig[GlobalMutexUnlockConfig](data)
 
 	if err != nil {
 		return nil, err

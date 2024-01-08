@@ -1,0 +1,2 @@
+{{include "postgres.statefulset" "inventory-db"}}
+{{include "postgres.service" "inventory-db"}}

@@ -1,0 +1,2 @@
+{{include "rabbitmq.statefulset" "message-broker"}}
+{{include "rabbitmq.service" "message-broker"}}

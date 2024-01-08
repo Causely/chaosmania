@@ -3,12 +3,13 @@ package main
 import (
 	"context"
 	"os"
+	"strings"
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
-	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.12.0"
 	"go.uber.org/zap"
 )
@@ -40,11 +41,11 @@ func initOTLP(logger *zap.Logger) func() {
 
 	// Register the trace exporter with a TracerProvider,
 	// using a batch span processor to aggregate spans before export.
-	batchSpanProcessor := sdktrace.NewBatchSpanProcessor(traceExporter)
-	tracerProvider := sdktrace.NewTracerProvider(
-		sdktrace.WithSampler(sdktrace.AlwaysSample()),
-		sdktrace.WithResource(res),
-		sdktrace.WithSpanProcessor(batchSpanProcessor),
+	batchSpanProcessor := trace.NewBatchSpanProcessor(traceExporter)
+	tracerProvider := trace.NewTracerProvider(
+		trace.WithSampler(trace.AlwaysSample()),
+		trace.WithResource(res),
+		trace.WithSpanProcessor(batchSpanProcessor),
 	)
 	otel.SetTracerProvider(tracerProvider)
 
@@ -64,6 +65,9 @@ func InitOTLPProvider(logger *zap.Logger) func() {
 	endpoint := os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
 
 	if endpoint != "" {
+		hostIp := os.Getenv("HOST_IP")
+		endpoint = strings.Replace(endpoint, "$(HOST_IP)", hostIp, 1)
+		os.Setenv("OTEL_EXPORTER_OTLP_ENDPOINT", endpoint)
 		return initOTLP(logger)
 	} else {
 		return func() {}

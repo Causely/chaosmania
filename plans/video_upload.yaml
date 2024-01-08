@@ -1,0 +1,41 @@
+phases:
+- client:
+    workers:
+    - delay: 1s
+      duration: 1200h
+      instances: 1
+  name: phase1
+  setup:
+    actions: []
+  workload:
+    actions:
+    - config:
+        script: "function run() {\n        // Allocate memory for the video\n    \
+          \    ctx.allocate_memory(1024000, 1)\n\n        // Burn CPU to simulate\
+          \ video processing\n        ctx.burn(\"100ms\")\n\n        // Send a request\
+          \ for authentication\n        ctx.http_post(ctx.ctx, \"http://auth:8080\"\
+          , \"{\\\"actions\\\":[{\\\"name\\\":\\\"Script\\\",\\\"config\\\":{\\\"\
+          script\\\":\\\"function run() {\\\\n        // Burn\\\\n        ctx.burn(\\\
+          \\\\\"10ms\\\\\\\");\\\\n\\\\n        auth_cache = ctx.get_service(\\\\\\\
+          \"auth-cache\\\\\\\");\\\\n        auth_cache.set(ctx.ctx, \\\\\\\"key\\\
+          \\\\\", \\\\\\\"value\\\\\\\");\\\\n        auth_cache.get(ctx.ctx, \\\\\
+          \\\"key\\\\\\\");\\\\n    }\\\"}}]}\");\n\n        // TODO: Send custom\
+          \ paylod\n        // Send a request to upload the video\n        ctx.http_post(ctx.ctx,\
+          \ \"http://upload:8080\", \"{\\\"actions\\\":[{\\\"name\\\":\\\"Script\\\
+          \",\\\"config\\\":{\\\"script\\\":\\\"function run() {\\\\n        ctx.allocate_memory(1024000,\
+          \ 1);\\\\n        ctx.burn(\\\\\\\"100ms\\\\\\\");\\\\n\\\\n        var\
+          \ video_data = ctx.random_string(512000);\\\\n\\\\n        // Create a unique\
+          \ ID for the video\\\\n        video_id = ctx.uuid();\\\\n\\\\n        //\
+          \ Track the video status in the database\\\\n        upload_db = ctx.get_service(\\\
+          \\\\\"upload-db\\\\\\\");\\\\n        upload_db.query(ctx.ctx, \\\\\\\"\
+          CREATE TABLE IF NOT EXISTS videos (id text PRIMARY KEY, status text);\\\\\
+          \\\");\\\\n\\\\n        upload_db.query(ctx.ctx, \\\\\\\"INSERT INTO videos\
+          \ (id, status) VALUES ('\\\\\\\" + video_id + \\\\\\\"','uploaded');\\\\\
+          \\\");\\\\n\\\\n        // Send a message to the data broker\\\\n      \
+          \  data_broker = ctx.get_service(\\\\\\\"data-broker-producer\\\\\\\");\\\
+          \\n\\\\n        msg = JSON.stringify({\\\\n            \\\\\\\"video_id\\\
+          \\\\\": video_id,\\\\n            \\\\\\\"raw_data\\\\\\\": video_data,\\\
+          \\n            \\\\\\\"status\\\\\\\": \\\\\\\"uploaded\\\\\\\"\\\\n   \
+          \     });\\\\n\\\\n        data_broker.produce(ctx.ctx, \\\\\\\"test1\\\\\
+          \\\", msg);\\\\n    }\\\"}}]}\"); \n    }"
+      name: Script

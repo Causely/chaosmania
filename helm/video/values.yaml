@@ -1,0 +1,191 @@
+image:
+  repository: quay.io/causely/chaosmania
+  pullPolicy: Always
+  tag: "latest"
+
+resources:
+  limits:
+    cpu: 1000m
+    memory: 3Gi
+  requests:
+    cpu: 500m
+    memory: 64Mi
+
+serviceMonitor:
+  # When set true then use a serviceMonitor to configure scraping
+  enabled: true
+
+otlp:
+  enabled: false
+  endpoint: "" # http://tempo.monitoring:4318
+  insecure: true
+
+datadog:
+  enabled: true
+
+hpa:
+  enabled: false
+
+encoder:
+  background_services:
+    - "encoder-data-broker-consumer"
+
+upload:
+  background_services:
+    - "upload-message-broker-consumer"
+
+inventory:
+  background_services:
+    - "inventory-message-broker-consumer"
+
+background_services:
+  # This runs the main encoder logic
+  # - It consumes messages from the data broker (the video stream)
+  # - Sends a message to the message broker (the video status is now encoding)
+  # - Stores the video in the storage service
+  # - Creates a thumbnail and stores it in the storage service
+  # - Sends a message to the message broker (the video status is now encoded)
+  - name: "encoder-data-broker-consumer"
+    type: kafka-consumer
+    config:
+      brokers: 
+        - # Required
+      username: "$ConnectionString"
+      password: # Required
+      tls_enable: true
+      sasl_enable: true
+      topic: test1
+      script: |
+        function run() {
+          var msg = ctx.get_message();
+          var data = JSON.parse(msg);
+          var video_id = data.video_id;
+          var raw_data = data.raw_data;
+
+          // Update the video status to encoding
+          message_broker = ctx.get_service("message-broker-producer");
+          msg = JSON.stringify({
+              "video_id": video_id,
+              "status": "encoding"
+          });
+          message_broker.produce(ctx.ctx, "video-encoding", msg);
+
+          // Send a request to the storage service to store the video
+          var storage = ctx.get_service("storage");
+          storage.put_object(ctx.ctx, "videos", video_id, raw_data); 
+
+          // Create a thumbnail
+          thumbnail = ctx.random_string(1024 * 100);
+          var storage = ctx.get_service("storage");
+          storage.put_object(ctx.ctx, "thumbnails", video_id, thumbnail); 
+
+          // Update the video status to encoded
+          msg = JSON.stringify({
+              "video_id": video_id,
+              "status": "encoded"
+          });
+          message_broker.produce(ctx.ctx, "upload-video-encoding", msg);
+          message_broker.produce(ctx.ctx, "inventory-video-encoding", msg);
+
+          ctx.print("Encoded video: " + video_id + " " + raw_data.length + " bytes")
+        }
+
+  # This runs the main upload logic
+  # - It consumes messages from the message broker (the video status, send by the encoder)
+  # - Updates the video status in the upload database
+  - name: "upload-message-broker-consumer"
+    type: rabbitmq-consumer
+    config:
+      url: "amqp://guest:guest@message-broker:5672/"
+      queue: "upload-video-encoding"
+      script: |
+        function run() {
+          msg = ctx.get_message()
+          data = JSON.parse(msg)
+          video_id = data.video_id
+
+          ctx.print("Got video status: " + video_id + " " + data.status)
+
+          // Update the video status in the database
+          upload_db = ctx.get_service("upload-db");
+          upload_db.query(ctx.ctx, "UPDATE videos SET status = '" + data.status + "' WHERE id = '" + video_id + "';");
+        }
+
+  # This runs the main inventory logic
+  # - It consumes messages from the message broker (the video status, send by the encoder)
+  # - Updates the video status in the inventory database
+  - name: "inventory-message-broker-consumer"
+    type: rabbitmq-consumer
+    config:
+      url: "amqp://guest:guest@message-broker:5672/"
+      queue: "inventory-video-encoding"
+      script: |
+        function run() {
+          msg = ctx.get_message()
+          data = JSON.parse(msg)
+          video_id = data.video_id
+
+          // Update the video status in the database
+          inventory_db = ctx.get_service("inventory-db");
+
+          if (data.status == "encoded") {
+            inventory_db.query(ctx.ctx, "CREATE TABLE IF NOT EXISTS videos (id text PRIMARY KEY, status text, created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP);");
+            inventory_db.query(ctx.ctx, "INSERT INTO videos (status, id) VALUES ('" + data.status + "', '" + video_id + "');");
+            ctx.print("Added video to inventory: " + video_id + " " + data.status)
+          }
+        }
+
+
+services:
+  - name: auth-cache
+    type: redis
+    config:
+      address: "auth-cache:6379"
+
+  - name: upload-db
+    type: postgresql
+    config:
+      dbname: postgres
+      host: upload-db
+      maxidle: 10
+      maxopen: 5
+      password: postgres
+      port: 5432
+      user: postgres
+
+  - name: inventory-db
+    type: postgresql
+    config:
+      dbname: postgres
+      host: inventory-db
+      maxidle: 10
+      maxopen: 5
+      password: postgres
+      port: 5432
+      user: postgres
+
+  - name: "data-broker-producer"
+    type: kafka-producer
+    config:
+      brokers: 
+        - # Required
+      username: # Required
+      password: # Required
+      tls_enable: true
+      sasl_enable: true
+
+  - name: "message-broker-producer"
+    type: rabbitmq-producer
+    config:
+      url: "amqp://guest:guest@message-broker:5672/"
+
+  - name: "storage"
+    type: "minio"
+    config:
+      endpoint: "storage:9000"
+      accesskeyid: minioadmin
+      secretaccesskey: minioadmin 
+      usessl: false
+      buckets:
+        - name: "videos"
+        - name: "thumbnails"

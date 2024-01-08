@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: encoder
+  labels:
+    {{include "common.labels" "encoder" | nindent 4}}
+spec:
+  selector:
+    matchLabels:
+      {{include "common.labels" "encoder" | nindent 6}}
+  template:
+    metadata:
+      labels:
+        {{include "common.labels" "encoder" | nindent 8}}
+    spec:
+      containers: 
+      {{include "chaosmania.container" . | nindent 6}}
+          - name: ENABLED_BACKGROUND_SERVICES
+            value: "{{ .Values.encoder.background_services | join "," }}"
+      volumes:
+      {{include "common.volumes" . | nindent 6}}
+---
+{{include "chaosmania.service" "encoder"}}
+---
+{{ if .Values.hpa.enabled }}
+{{ include "chaosmania.hpa" "encoder" }}
+{{ end }}

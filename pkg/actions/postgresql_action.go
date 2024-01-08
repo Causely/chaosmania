@@ -7,13 +7,16 @@ import (
 
 	"database/sql"
 
-	"github.com/Causely/chaosmania/pkg/logger"
 	_ "github.com/lib/pq"
+
+	"github.com/Causely/chaosmania/pkg"
+	"github.com/Causely/chaosmania/pkg/logger"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"go.nhat.io/otelsql"
 	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
 	"go.uber.org/zap"
+	sqltrace "gopkg.in/DataDog/dd-trace-go.v1/contrib/database/sql"
 )
 
 var PQDBQueryHistogram = promauto.NewHistogram(prometheus.HistogramOpts{
@@ -24,18 +27,17 @@ var PQDBQueryHistogram = promauto.NewHistogram(prometheus.HistogramOpts{
 type PostgresqlQuery struct{}
 
 type PostgresqlQueryConfig struct {
-	Query        string   `json:"query"`
-	Repeat       int      `json:"repeat"`
-	Host         string   `json:"host"`
-	Port         int      `json:"port"`
-	MaxOpen      int      `json:"maxopen"`
-	MaxIdle      int      `json:"maxidle"`
-	DBname       string   `json:"dbname"`
-	User         string   `json:"user"`
-	Password     string   `json:"password"`
-	SSLMode      string   `json:"sslmode"`
-	AppName      string   `json:"appname"`
-	BurnDuration Duration `json:"burn_duration"`
+	Query    string `json:"query"`
+	Repeat   int    `json:"repeat"`
+	Host     string `json:"host"`
+	Port     int    `json:"port"`
+	MaxOpen  int    `json:"maxopen"`
+	MaxIdle  int    `json:"maxidle"`
+	DBname   string `json:"dbname"`
+	User     string `json:"user"`
+	Password string `json:"password"`
+	SSLMode  string `json:"sslmode"`
+	AppName  string `json:"appname"`
 }
 
 func openPostgres(dsn string, host string, port int, dbname string) (*sql.DB, error) {
@@ -60,8 +62,8 @@ func openPostgres(dsn string, host string, port int, dbname string) (*sql.DB, er
 	return sql.Open(driverName, dsn)
 }
 
-func (action *PostgresqlQuery) Execute(ctx context.Context, cfg map[string]any) error {
-	config, err := ParseConfig[PostgresqlQueryConfig](cfg)
+func (a *PostgresqlQuery) Execute(ctx context.Context, cfg map[string]any) error {
+	config, err := pkg.ParseConfig[PostgresqlQueryConfig](cfg)
 	if err != nil {
 		logger.FromContext(ctx).Warn("failed to parse config", zap.Error(err))
 		return err
@@ -107,8 +109,16 @@ func (action *PostgresqlQuery) Execute(ctx context.Context, cfg map[string]any) 
 	if config.AppName != "" {
 		appname = config.AppName
 	}
+
 	connStr := fmt.Sprintf("host=%s port=%d user=%s dbname=%s password=%s sslmode=%s application_name=%s", host, port, dbname, user, password, sslmode, appname)
-	db, err := openPostgres(connStr, host, port, dbname)
+
+	var db *sql.DB
+	if pkg.IsDatadogEnabled() {
+		db, err = sqltrace.Open("postgres", connStr)
+	} else {
+		db, err = openPostgres(connStr, host, port, dbname)
+	}
+
 	if err != nil {
 		logger.FromContext(ctx).Warn("failed to connect to DB", zap.Error(err))
 		return err
@@ -121,15 +131,16 @@ func (action *PostgresqlQuery) Execute(ctx context.Context, cfg map[string]any) 
 
 	for i := 0; i < repeat; i++ {
 		now := time.Now()
-		rows, looperr := db.QueryContext(ctx, config.Query)
-		if looperr != nil {
-			logger.FromContext(ctx).Warn("failed to execute query", zap.Error(looperr))
-			return looperr
+		rows, err := db.QueryContext(ctx, config.Query)
+		if err != nil {
+			logger.FromContext(ctx).Warn("failed to execute query", zap.Error(err))
+			return err
 		}
 
 		cols, err := rows.Columns()
 		if err != nil {
 			logger.FromContext(ctx).Error("failed to list columns", zap.Error(err))
+			return err
 		}
 
 		// Create a slice to hold interface{} values for each column
@@ -143,6 +154,7 @@ func (action *PostgresqlQuery) Execute(ctx context.Context, cfg map[string]any) 
 			err := rows.Scan(values...)
 			if err != nil {
 				logger.FromContext(ctx).Error("failed to scan row", zap.Error(err))
+				return err
 			}
 
 			// Print the values of each column
@@ -155,18 +167,11 @@ func (action *PostgresqlQuery) Execute(ctx context.Context, cfg map[string]any) 
 		PQDBQueryHistogram.Observe(float64(time.Since(now).Seconds()))
 	}
 
-	// Now burn cpu, if configured to do so
-	if config.BurnDuration.Milliseconds() != 0 {
-		logger.FromContext(ctx).Info("Running burn for: " + config.BurnDuration.String())
-		end := time.Now().Add(config.BurnDuration.Duration)
-		for time.Now().Before(end) {
-		}
-	}
-	return err
+	return nil
 }
 
 func (action *PostgresqlQuery) ParseConfig(data map[string]any) (any, error) {
-	return ParseConfig[PostgresqlQueryConfig](data)
+	return pkg.ParseConfig[PostgresqlQueryConfig](data)
 }
 
 func init() {

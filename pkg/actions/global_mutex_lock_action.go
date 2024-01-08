@@ -4,6 +4,7 @@ import (
 	"context"
 	"sync"
 
+	"github.com/Causely/chaosmania/pkg"
 	"github.com/Causely/chaosmania/pkg/logger"
 	"go.uber.org/zap"
 )
@@ -18,7 +19,7 @@ type GlobalMutexLockConfig struct {
 }
 
 func (a *GlobalMutexLock) Execute(ctx context.Context, cfg map[string]any) error {
-	config, err := ParseConfig[GlobalMutexLockConfig](cfg)
+	config, err := pkg.ParseConfig[GlobalMutexLockConfig](cfg)
 	if err != nil {
 		logger.FromContext(ctx).Warn("failed to parse config", zap.Error(err))
 		return err
@@ -41,7 +42,7 @@ func (a *GlobalMutexLock) Execute(ctx context.Context, cfg map[string]any) error
 }
 
 func (a *GlobalMutexLock) ParseConfig(data map[string]any) (any, error) {
-	return ParseConfig[GlobalMutexLockConfig](data)
+	return pkg.ParseConfig[GlobalMutexLockConfig](data)
 }
 
 func init() {

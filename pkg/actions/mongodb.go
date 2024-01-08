@@ -3,6 +3,11 @@ package actions
 import (
 	"context"
 	"fmt"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/Causely/chaosmania/pkg"
 	"github.com/Causely/chaosmania/pkg/logger"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -10,9 +15,6 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/x/mongo/driver/connstring"
 	"go.uber.org/zap"
-	"strconv"
-	"strings"
-	"time"
 
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.opentelemetry.io/contrib/instrumentation/go.mongodb.org/mongo-driver/mongo/otelmongo"
@@ -52,7 +54,7 @@ type MongoDbQueryConfig struct {
 	MaxOpen      int64         `json:"maxopen"`
 	MaxIdle      time.Duration `json:"maxidle"`
 	Repeat       int           `json:"repeat"`
-	BurnDuration Duration      `json:"burn_duration"`
+	BurnDuration pkg.Duration  `json:"burn_duration"`
 }
 
 func buildClientOpts(ctx context.Context, config MongoDbQueryConfig) *options.ClientOptions {
@@ -155,7 +157,7 @@ func buildClientOpts(ctx context.Context, config MongoDbQueryConfig) *options.Cl
 }
 
 func (a *MongoDBQuery) Execute(ctx context.Context, cfg map[string]any) error {
-	config, err := ParseConfig[MongoDbQueryConfig](cfg)
+	config, err := pkg.ParseConfig[MongoDbQueryConfig](cfg)
 	if err != nil {
 		logger.FromContext(ctx).Warn("failed to parse config", zap.Error(err))
 		return err
@@ -260,7 +262,7 @@ func (a *MongoDBQuery) Execute(ctx context.Context, cfg map[string]any) error {
 }
 
 func (a *MongoDBQuery) ParseConfig(data map[string]any) (any, error) {
-	return ParseConfig[MongoDbQueryConfig](data)
+	return pkg.ParseConfig[MongoDbQueryConfig](data)
 }
 
 func init() {

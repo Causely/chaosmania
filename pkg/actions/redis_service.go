@@ -18,7 +18,8 @@ type RedisService struct {
 }
 
 type RedisServiceConfig struct {
-	Address string `json:"address"`
+	Address            string `json:"address"`
+	TracingServiceName string `json:"tracing_service_name"`
 }
 
 func (s *RedisService) Name() ServiceName {
@@ -42,7 +43,7 @@ func NewRedisService(name ServiceName, config map[string]any) (Service, error) {
 
 	if pkg.IsDatadogEnabled() {
 		opts := &redis8.Options{Addr: cfg.Address, DB: 0}
-		rdb := redistrace.NewClient(opts)
+		rdb := redistrace.NewClient(opts, redistrace.WithServiceName(cfg.TracingServiceName))
 
 		if err != nil && err != redis8.Nil {
 			return nil, err

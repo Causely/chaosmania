@@ -37,6 +37,8 @@ scrape-prometheus: "true"
 {{- if .Values.datadog.enabled }}
 - name: DATADOG_ENABLED
   value: "true"
+- name: DD_DATA_STREAMS_ENABLED
+  value: "true"
 - name: DD_TRACE_AGENT_URL
   value: 'unix:///var/run/datadog/apm.socket'
 - name: DD_ENV
@@ -264,91 +266,6 @@ spec:
         resources:
           requests:
             storage: 10Gi
-{{ end -}}
-
-{{- define "kafka.statefulset" }}
----
-apiVersion: apps/v1
-kind: StatefulSet
-metadata:
-  name: {{ . }}
-spec:
-  selector:
-    matchLabels:
-      app.kubernetes.io/instance: {{ . }}
-      app.kubernetes.io/name: {{ . }}
-  serviceName: "{{ . }}"
-  replicas: 1
-  template:
-    metadata:
-      labels:
-        app.kubernetes.io/instance: {{ . }}
-        app.kubernetes.io/name: {{ . }}
-    spec:
-      securityContext:
-        fsGroup: 1001
-      terminationGracePeriodSeconds: 10
-      containers:
-        - name: kafka
-          image: docker.io/bitnami/kafka:3.6
-          env:
-            - name: KAFKA_CFG_NODE_ID
-              value: "0"
-            - name: KAFKA_CFG_PROCESS_ROLES
-              value: controller,broker
-            - name: KAFKA_CFG_CONTROLLER_QUORUM_VOTERS
-              value: 0@{{ . }}:9093
-            - name: KAFKA_CFG_LISTENERS
-              value: PLAINTEXT://:9092,CONTROLLER://:9093
-            - name: KAFKA_CFG_ADVERTISED_LISTENERS
-              value: PLAINTEXT://:9092
-            - name: KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP
-              value: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
-            - name: KAFKA_CFG_CONTROLLER_LISTENER_NAMES
-              value: CONTROLLER
-            - name: KAFKA_CFG_INTER_BROKER_LISTENER_NAME
-              value: PLAINTEXT
-            - name: KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE
-              value: "true"
-          ports:
-            - containerPort: 9092
-              name: kafka
-            - containerPort: 9093
-              name: kafka2
-          volumeMounts:
-            - name: data
-              mountPath: /bitnami/kafka
-  volumeClaimTemplates:
-    - metadata:
-        name: data
-      spec:
-        accessModes: ["ReadWriteOnce"]
-        resources:
-          requests:
-            storage: 10Gi
-{{ end -}}
-
-{{- define "kafka.service" }}
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: {{ . }}
-  labels:
-    app.kubernetes.io/instance: {{ . }}
-    app.kubernetes.io/name: {{ . }}
-spec:
-  type: ClusterIP
-  ports:
-    - port: 9092
-      name: kafka
-      targetPort: kafka
-    - port: 9093
-      name: kafka2
-      targetPort: kafka2
-  selector:
-    app.kubernetes.io/instance: {{ . }}
-    app.kubernetes.io/name: {{ . }}
 {{ end -}}
 
 {{- define "rabbitmq.statefulset" }}

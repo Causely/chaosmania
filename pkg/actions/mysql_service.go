@@ -21,15 +21,16 @@ type MysqlService struct {
 }
 
 type MysqlServiceConfig struct {
-	Host     string `json:"host"`
-	Port     int    `json:"port"`
-	MaxOpen  int    `json:"maxopen"`
-	MaxIdle  int    `json:"maxidle"`
-	DBname   string `json:"dbname"`
-	User     string `json:"user"`
-	Password string `json:"password"`
-	SSLMode  string `json:"sslmode"`
-	AppName  string `json:"appname"`
+	Host               string `json:"host"`
+	Port               int    `json:"port"`
+	MaxOpen            int    `json:"maxopen"`
+	MaxIdle            int    `json:"maxidle"`
+	DBname             string `json:"dbname"`
+	User               string `json:"user"`
+	Password           string `json:"password"`
+	SSLMode            string `json:"sslmode"`
+	AppName            string `json:"appname"`
+	TracingServiceName string `json:"tracing_service_name"`
 }
 
 func (s *MysqlService) Name() ServiceName {

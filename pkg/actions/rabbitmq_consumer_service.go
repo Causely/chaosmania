@@ -7,6 +7,7 @@ import (
 	"github.com/Causely/chaosmania/pkg/logger"
 	"github.com/streadway/amqp"
 	"go.uber.org/zap"
+	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
 )
 
 type RabbitMQConsumerService struct {
@@ -16,9 +17,10 @@ type RabbitMQConsumerService struct {
 }
 
 type RabbitMQConsumerServiceConfig struct {
-	URL    string `json:"url"`
-	Queue  string `json:"queue"`
-	Script string `json:"script"`
+	URL                string `json:"url"`
+	Queue              string `json:"queue"`
+	Script             string `json:"script"`
+	TracingServiceName string `json:"tracing_service_name"`
 }
 
 func (s *RabbitMQConsumerService) Name() BackgroundServiceName {
@@ -99,24 +101,49 @@ func (s *RabbitMQConsumerService) run(ctx context.Context) error {
 	}
 
 	for msg := range deliveries {
-		cfg := ScriptConfig{
-			Script:  s.config.Script,
-			Message: string(msg.Body),
-		}
-
-		c, err := pkg.ConfigToMap(&cfg)
-		if err != nil {
-			return err
-		}
-
-		err = ACTIONS["Script"].Execute(ctx, c)
-		if err != nil {
-			logger.FromContext(ctx).Warn("failed to execute script", zap.Error(err))
-		}
-
-		msg.Ack(false)
+		s.handleMessage(ctx, msg)
 	}
 
+	return nil
+}
+
+func (s *RabbitMQConsumerService) handleMessage(ctx context.Context, msg amqp.Delivery) error {
+	span := tracer.StartSpan("handle_message",
+		tracer.ResourceName("handle_message"))
+	defer span.Finish()
+
+	// This span is just to show the relationship between the kafka consumer and the topic.
+	child := tracer.StartSpan("rabbitmq.consume",
+		tracer.ResourceName("Consume message"),
+		tracer.Tag("queue", s.config.Queue),             // Required tag
+		tracer.Tag("span.kind", "consumer"),             // Required tag
+		tracer.ServiceName(s.config.TracingServiceName), // Required tag
+		tracer.ChildOf(span.Context()),
+	)
+	child.Finish()
+
+	err := tracer.Inject(span.Context(), ctx)
+	if err != nil {
+		return err
+	}
+
+	cfg := ScriptConfig{
+		Script:  s.config.Script,
+		Message: string(msg.Body),
+	}
+
+	c, err := pkg.ConfigToMap(&cfg)
+	if err != nil {
+		child.Finish(tracer.WithError(err))
+		return err
+	}
+
+	err = ACTIONS["Script"].Execute(ctx, c)
+	if err != nil {
+		logger.FromContext(ctx).Warn("failed to execute script", zap.Error(err))
+	}
+
+	msg.Ack(false)
 	return nil
 }
 

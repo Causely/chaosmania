@@ -18,9 +18,10 @@ import (
 type RedisCommand struct{}
 
 type RedisCommandConfig struct {
-	Address string `json:"address"`
-	Command string `json:"command"`
-	Args    []any  `json:"args"`
+	Address            string `json:"address"`
+	Command            string `json:"command"`
+	Args               []any  `json:"args"`
+	TracingServiceName string `json:"tracing_service_name"`
 }
 
 func (a *RedisCommand) Execute(ctx context.Context, cfg map[string]any) error {
@@ -32,7 +33,7 @@ func (a *RedisCommand) Execute(ctx context.Context, cfg map[string]any) error {
 
 	if pkg.IsDatadogEnabled() {
 		opts := &redis8.Options{Addr: config.Address, DB: 0}
-		rdb := redistrace.NewClient(opts)
+		rdb := redistrace.NewClient(opts, redistrace.WithServiceName(config.TracingServiceName))
 
 		switch strings.ToLower(config.Command) {
 		case "lpop":

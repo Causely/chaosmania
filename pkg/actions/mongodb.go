@@ -43,6 +43,7 @@ type MongoDBConnection struct {
 	ConnectingTimeoutMs *time.Duration         `json:"connecting_timeout_ms;default:nil"`
 	UseClientOptsOnly   bool                   `json:"use_client_opts_only;default:false"`
 	ClientOptions       *options.ClientOptions `json:"client_options:default:nil"`
+	TracingServiceName  string                 `json:"tracing_service_name"`
 }
 
 type MongoDbQueryConfig struct {

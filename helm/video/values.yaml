@@ -48,13 +48,15 @@ background_services:
   - name: "encoder-data-broker-consumer"
     type: kafka-consumer
     config:
+      tracing_service_name: data-broker
       brokers: 
-        - # Required
-      username: "$ConnectionString"
-      password: # Required
+        - "" # TODO
+      username: "" # TODO
+      password: "" # TODO
       tls_enable: true
       sasl_enable: true
       topic: test1
+      group: encoder-group
       script: |
         function run() {
           var msg = ctx.get_message();
@@ -73,6 +75,8 @@ background_services:
           // Send a request to the storage service to store the video
           var storage = ctx.get_service("storage");
           storage.put_object(ctx.ctx, "videos", video_id, raw_data); 
+
+          ctx.burn("3s")
 
           // Create a thumbnail
           thumbnail = ctx.random_string(1024 * 100);
@@ -96,6 +100,7 @@ background_services:
   - name: "upload-message-broker-consumer"
     type: rabbitmq-consumer
     config:
+      tracing_service_name: message-broker
       url: "amqp://guest:guest@message-broker:5672/"
       queue: "upload-video-encoding"
       script: |
@@ -117,6 +122,7 @@ background_services:
   - name: "inventory-message-broker-consumer"
     type: rabbitmq-consumer
     config:
+      tracing_service_name: message-broker
       url: "amqp://guest:guest@message-broker:5672/"
       queue: "inventory-video-encoding"
       script: |
@@ -140,11 +146,13 @@ services:
   - name: auth-cache
     type: redis
     config:
+      tracing_service_name: auth-cache
       address: "auth-cache:6379"
 
   - name: upload-db
     type: postgresql
     config:
+      tracing_service_name: upload-db
       dbname: postgres
       host: upload-db
       maxidle: 10
@@ -156,6 +164,7 @@ services:
   - name: inventory-db
     type: postgresql
     config:
+      tracing_service_name: inventory-db
       dbname: postgres
       host: inventory-db
       maxidle: 10
@@ -167,21 +176,24 @@ services:
   - name: "data-broker-producer"
     type: kafka-producer
     config:
+      tracing_service_name: data-broker
       brokers: 
-        - # Required
-      username: # Required
-      password: # Required
+        - "" # TODO
+      username: "" # TODO
+      password: "" # TODO
       tls_enable: true
       sasl_enable: true
 
   - name: "message-broker-producer"
     type: rabbitmq-producer
     config:
+      tracing_service_name: message-broker
       url: "amqp://guest:guest@message-broker:5672/"
 
   - name: "storage"
     type: "minio"
     config:
+      tracing_service_name: storage
       endpoint: "storage:9000"
       accesskeyid: minioadmin
       secretaccesskey: minioadmin 

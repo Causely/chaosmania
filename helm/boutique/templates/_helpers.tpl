@@ -96,9 +96,11 @@ tags.datadoghq.com/version: "1"
     httpGet:
       path: /health
       port: http
+{{- if .Values.datadog.enabled }}
   volumeMounts:
     - name: apmsocketpath
       mountPath: /var/run/datadog
+{{ end }}
   securityContext:
     runAsNonRoot: true
     seccompProfile:

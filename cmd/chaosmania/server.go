@@ -82,7 +82,33 @@ func handleHealth(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func runWitheOTEL(log *zap.Logger, port int64) {
+func run(log *zap.Logger, port int64) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", handleRequests)
+	mux.HandleFunc("/health", handleHealth)
+	mux.HandleFunc("/debug/pprof/", pprof.Index)
+	mux.HandleFunc("/debug/pprof/profile", pprof.Profile)
+	mux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
+	mux.HandleFunc("/debug/pprof/trace", pprof.Trace)
+
+	mux.Handle("/metrics", promhttp.HandlerFor(prometheus.DefaultGatherer,
+		promhttp.HandlerOpts{
+			EnableOpenMetrics: true,
+		},
+	))
+
+	server := &http.Server{Addr: fmt.Sprintf(":%v", port), Handler: mux}
+	go func() {
+		log.Info(fmt.Sprintf("listening at %v", port))
+		err := server.ListenAndServe()
+
+		if err != nil {
+			log.Warn("webserver error", zap.Error(err))
+		}
+	}()
+}
+
+func runWithOTEL(log *zap.Logger, port int64) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", handleRequests)
 	mux.HandleFunc("/health", handleHealth)
@@ -211,7 +237,9 @@ func command_server(log *zap.Logger, ctx *cli.Context) error {
 		shutdown := InitOTLPProvider(log)
 		defer shutdown()
 
-		runWitheOTEL(log, port)
+		runWithOTEL(log, port)
+	} else {
+		run(log, port)
 	}
 
 	<-stop

@@ -1,2 +1,0 @@
-{{include "kafka.statefulset" "data-broker"}}
-{{include "kafka.service" "data-broker"}}

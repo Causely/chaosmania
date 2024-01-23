@@ -7,16 +7,19 @@ import (
 	"github.com/Causely/chaosmania/pkg/logger"
 	"github.com/streadway/amqp"
 	"go.uber.org/zap"
+	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
 )
 
 type RabbitMQProducerService struct {
-	name   ServiceName
-	config RabbitMQProducerServiceConfig
-	conn   *amqp.Connection
+	name    ServiceName
+	config  RabbitMQProducerServiceConfig
+	conn    *amqp.Connection
+	channel *amqp.Channel
 }
 
 type RabbitMQProducerServiceConfig struct {
-	URL string `json:"url"`
+	URL                string `json:"url"`
+	TracingServiceName string `json:"tracing_service_name"`
 }
 
 func (s *RabbitMQProducerService) Name() ServiceName {
@@ -30,6 +33,7 @@ func (s *RabbitMQProducerService) Type() ServiceType {
 func (s *RabbitMQProducerService) getChannel() (*amqp.Channel, error) {
 	if s.conn != nil && s.conn.IsClosed() {
 		s.conn = nil
+		s.channel = nil
 	}
 
 	if s.conn == nil {
@@ -39,9 +43,25 @@ func (s *RabbitMQProducerService) getChannel() (*amqp.Channel, error) {
 		}
 
 		s.conn = conn
+		channel, err := conn.Channel()
+		if err != nil {
+			return nil, err
+		}
+
+		s.channel = channel
 	}
 
-	return s.conn.Channel()
+	return s.channel, nil
+}
+
+func (s *RabbitMQProducerService) Close() error {
+	if s.conn != nil {
+		return s.conn.Close()
+	}
+
+	s.conn = nil
+	s.channel = nil
+	return nil
 }
 
 func (s *RabbitMQProducerService) Produce(ctx context.Context, queue string, msg string) error {
@@ -63,8 +83,28 @@ func (s *RabbitMQProducerService) Produce(ctx context.Context, queue string, msg
 
 	if err != nil {
 		logger.FromContext(ctx).Warn("failed to declare queue", zap.Error(err))
+
+		if err := s.Close(); err != nil {
+			logger.FromContext(ctx).Warn("failed to close connection", zap.Error(err))
+		}
+
 		return err
 	}
+
+	span := tracer.StartSpan("rabbitmq.produce",
+		tracer.ResourceName("Produce message"),
+		tracer.Tag("queue", queue))
+	defer span.Finish()
+
+	child := tracer.StartSpan("rabbitmq.produce",
+		tracer.ResourceName("Produce message"),
+		tracer.Tag("queue", queue),
+		tracer.Tag("span.kind", "producer"),
+		tracer.ServiceName(s.config.TracingServiceName),
+		tracer.ChildOf(span.Context()),
+	)
+
+	defer child.Finish()
 
 	// Send a message
 	return ch.Publish(

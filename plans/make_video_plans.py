@@ -1,11 +1,10 @@
-from typing import Union, List, Optional
-
-import sys
-import yaml
-import typer
 import json
-
+import sys
 from enum import Enum
+from typing import List, Optional, Union
+
+import typer
+import yaml
 from pydantic import BaseModel
 from typing_extensions import Annotated
 
@@ -195,6 +194,7 @@ def create_auth_check() -> WorkloadBuilder:
     }}''')
     return auth
 
+
 app = typer.Typer()
 
 create_upload_app = typer.Typer()
@@ -206,6 +206,7 @@ app.add_typer(show_recommendations_app, name="show-recommendations")
 show_video_app = typer.Typer()
 app.add_typer(show_video_app, name="show-video")
 
+
 @show_video_app.command()
 def create():
     # Recommendation just looks up the most recent videos
@@ -214,6 +215,7 @@ def create():
         ctx.burn("10ms");
 
         inventory_db = ctx.get_service("inventory-db");
+        inventory_db.query(ctx.ctx, "CREATE TABLE IF NOT EXISTS videos (id text PRIMARY KEY, status text, created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP);");
         videos = inventory_db.query(ctx.ctx, "SELECT * FROM videos ORDER BY created_at DESC LIMIT 1;");
 
         storage = ctx.get_service("storage");
@@ -221,7 +223,7 @@ def create():
 
         ctx.print("Got video: " + videos[0].id + " with size: " + vid.length + " bytes");
     }}''')
-        
+
     # Frontend receives the video from the user
     frontend = WorkloadBuilder()
     frontend.script(script=f'''function run() {{
@@ -231,9 +233,8 @@ def create():
         ctx.http_post(ctx.ctx, "http://inventory:8080", {inventory.as_paylod()}); 
     }}''')
 
-
     phase = Phase(name='phase1', client=Client(workers=[Worker(
-    instances=1, duration='1200h', delay='2ms')]), workload=Workload(actions=frontend.actions), setup=Workload(actions=[]))
+        instances=1, duration='1200h', delay='2ms')]), workload=Workload(actions=frontend.actions), setup=Workload(actions=[]))
     plan = Plan(phases=[phase])
 
     yaml.safe_dump(plan.model_dump(), sys.stdout)
@@ -262,7 +263,7 @@ def create():
 
         ctx.print("Got " + videos.length + " videos with total size: " + size + " bytes");
     }}''')
-        
+
     # Frontend calls recommendation service to get top 20 videos
     recommendation = WorkloadBuilder()
     recommendation.script(script=f'''function run() {{
@@ -279,9 +280,8 @@ def create():
         ctx.http_post(ctx.ctx, "http://recommendation:8080", {recommendation.as_paylod()}); 
     }}''')
 
-
     phase = Phase(name='phase1', client=Client(workers=[Worker(
-    instances=1, duration='1200h', delay='2ms')]), workload=Workload(actions=frontend.actions), setup=Workload(actions=[]))
+        instances=1, duration='1200h', delay='2ms')]), workload=Workload(actions=frontend.actions), setup=Workload(actions=[]))
     plan = Plan(phases=[phase])
 
     yaml.safe_dump(plan.model_dump(), sys.stdout)

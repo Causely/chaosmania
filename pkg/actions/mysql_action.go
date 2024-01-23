@@ -26,17 +26,18 @@ var MYDBQueryHistogram = promauto.NewHistogram(prometheus.HistogramOpts{
 type MysqlQuery struct{}
 
 type MysqlQueryConfig struct {
-	Query    string `json:"query"`
-	Repeat   int    `json:"repeat"`
-	Host     string `json:"host"`
-	Port     int    `json:"port"`
-	MaxOpen  int    `json:"maxopen"`
-	MaxIdle  int    `json:"maxidle"`
-	DBname   string `json:"dbname"`
-	User     string `json:"user"`
-	Password string `json:"password"`
-	SSLMode  string `json:"sslmode"`
-	AppName  string `json:"appname"`
+	Query              string `json:"query"`
+	Repeat             int    `json:"repeat"`
+	Host               string `json:"host"`
+	Port               int    `json:"port"`
+	MaxOpen            int    `json:"maxopen"`
+	MaxIdle            int    `json:"maxidle"`
+	DBname             string `json:"dbname"`
+	User               string `json:"user"`
+	Password           string `json:"password"`
+	SSLMode            string `json:"sslmode"`
+	AppName            string `json:"appname"`
+	TracingServiceName string `json:"tracing_service_name"`
 }
 
 func openMysql(dsn string, host string, port int, dbname string) (*sql.DB, error) {

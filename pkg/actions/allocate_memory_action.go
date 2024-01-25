@@ -3,6 +3,8 @@ package actions
 import (
 	"context"
 	"sync"
+
+	"github.com/Causely/chaosmania/pkg"
 )
 
 type AllocateMemory struct {
@@ -37,7 +39,7 @@ func (a *AllocateMemory) leak(config *AllocateMemoryConfig, data [][]byte) {
 }
 
 func (a *AllocateMemory) Execute(ctx context.Context, cfg map[string]any) error {
-	config, err := ParseConfig[AllocateMemoryConfig](cfg)
+	config, err := pkg.ParseConfig[AllocateMemoryConfig](cfg)
 	if err != nil {
 		return err
 	}
@@ -64,7 +66,7 @@ func (a *AllocateMemory) Execute(ctx context.Context, cfg map[string]any) error 
 }
 
 func (a *AllocateMemory) ParseConfig(data map[string]any) (any, error) {
-	return ParseConfig[AllocateMemoryConfig](data)
+	return pkg.ParseConfig[AllocateMemoryConfig](data)
 }
 
 func init() {

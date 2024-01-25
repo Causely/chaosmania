@@ -5,7 +5,7 @@ metadata:
   labels:
     {{include "common.labels" "frontend" | nindent 4}}
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
       {{include "common.labels" "frontend" | nindent 6}}
@@ -20,3 +20,7 @@ spec:
       {{include "common.volumes" . | nindent 6}}
 ---
 {{ include "chaosmania.service" "frontend" }}
+---
+{{ if .Values.hpa.enabled }}
+{{ include "chaosmania.hpa" "frontend" }}
+{{ end }}

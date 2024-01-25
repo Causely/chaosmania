@@ -8,9 +8,11 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/Causely/chaosmania/pkg"
 	"github.com/Causely/chaosmania/pkg/logger"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.uber.org/zap"
+	httptrace "gopkg.in/DataDog/dd-trace-go.v1/contrib/net/http"
 )
 
 type HTTPRequest struct{}
@@ -21,13 +23,13 @@ type HTTPRequestConfig struct {
 }
 
 func (a *HTTPRequest) Execute(ctx context.Context, cfg map[string]any) error {
-	config, err := ParseConfig[HTTPRequestConfig](cfg)
+	config, err := pkg.ParseConfig[HTTPRequestConfig](cfg)
 	if err != nil {
 		logger.FromContext(ctx).Warn("failed to parse config", zap.Error(err))
 		return err
 	}
 
-	payloadBytes, err := json.Marshal(Convert(config.Body))
+	payloadBytes, err := json.Marshal(pkg.Convert(config.Body))
 	if err != nil {
 		logger.FromContext(ctx).Warn("failed marshal json", zap.Error(err))
 		return err
@@ -44,10 +46,19 @@ func (a *HTTPRequest) Execute(ctx context.Context, cfg map[string]any) error {
 	req.Header.Set("Content-Type", "application/json")
 
 	// Send the request to the server
-	client := &http.Client{
-		Transport: otelhttp.NewTransport(http.DefaultTransport),
+	var resp *http.Response
+	if pkg.IsDatadogEnabled() {
+		client := httptrace.WrapClient(http.DefaultClient)
+		resp, err = client.Do(req)
+	} else if pkg.IsOpenTelemetryEnabled() {
+		client := &http.Client{
+			Transport: otelhttp.NewTransport(http.DefaultTransport),
+		}
+		resp, err = client.Do(req)
+	} else {
+		resp, err = http.DefaultClient.Do(req)
 	}
-	resp, err := client.Do(req)
+
 	if err != nil {
 		logger.FromContext(ctx).Warn("failed to send request", zap.Error(err))
 		return err
@@ -67,7 +78,7 @@ func (a *HTTPRequest) Execute(ctx context.Context, cfg map[string]any) error {
 }
 
 func (a *HTTPRequest) ParseConfig(data map[string]any) (any, error) {
-	return ParseConfig[HTTPRequestConfig](data)
+	return pkg.ParseConfig[HTTPRequestConfig](data)
 }
 
 func init() {

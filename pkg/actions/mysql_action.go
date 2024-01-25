@@ -8,6 +8,7 @@ import (
 
 	"database/sql"
 
+	"github.com/Causely/chaosmania/pkg"
 	"github.com/Causely/chaosmania/pkg/logger"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/prometheus/client_golang/prometheus"
@@ -25,18 +26,18 @@ var MYDBQueryHistogram = promauto.NewHistogram(prometheus.HistogramOpts{
 type MysqlQuery struct{}
 
 type MysqlQueryConfig struct {
-	Query        string   `json:"query"`
-	Repeat       int      `json:"repeat"`
-	Host         string   `json:"host"`
-	Port         int      `json:"port"`
-	MaxOpen      int      `json:"maxopen"`
-	MaxIdle      int      `json:"maxidle"`
-	DBname       string   `json:"dbname"`
-	User         string   `json:"user"`
-	Password     string   `json:"password"`
-	SSLMode      string   `json:"sslmode"`
-	AppName      string   `json:"appname"`
-	BurnDuration Duration `json:"burn_duration"`
+	Query              string `json:"query"`
+	Repeat             int    `json:"repeat"`
+	Host               string `json:"host"`
+	Port               int    `json:"port"`
+	MaxOpen            int    `json:"maxopen"`
+	MaxIdle            int    `json:"maxidle"`
+	DBname             string `json:"dbname"`
+	User               string `json:"user"`
+	Password           string `json:"password"`
+	SSLMode            string `json:"sslmode"`
+	AppName            string `json:"appname"`
+	TracingServiceName string `json:"tracing_service_name"`
 }
 
 func openMysql(dsn string, host string, port int, dbname string) (*sql.DB, error) {
@@ -62,7 +63,7 @@ func openMysql(dsn string, host string, port int, dbname string) (*sql.DB, error
 }
 
 func (action *MysqlQuery) Execute(ctx context.Context, cfg map[string]any) error {
-	config, err := ParseConfig[MysqlQueryConfig](cfg)
+	config, err := pkg.ParseConfig[MysqlQueryConfig](cfg)
 	if err != nil {
 		logger.FromContext(ctx).Warn("failed to parse config", zap.Error(err))
 		return err
@@ -171,18 +172,11 @@ func (action *MysqlQuery) Execute(ctx context.Context, cfg map[string]any) error
 		MYDBQueryHistogram.Observe(float64(time.Since(now).Seconds()))
 	}
 
-	// Now burn cpu, if configured to do so
-	if config.BurnDuration.Milliseconds() != 0 {
-		logger.FromContext(ctx).Info("Running burn for: " + config.BurnDuration.String())
-		end := time.Now().Add(config.BurnDuration.Duration)
-		for time.Now().Before(end) {
-		}
-	}
 	return nil
 }
 
 func (action *MysqlQuery) ParseConfig(data map[string]any) (any, error) {
-	return ParseConfig[MysqlQueryConfig](data)
+	return pkg.ParseConfig[MysqlQueryConfig](data)
 }
 
 func init() {

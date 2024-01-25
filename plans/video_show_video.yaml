@@ -1,0 +1,33 @@
+phases:
+- client:
+    workers:
+    - delay: 2ms
+      duration: 1200h
+      instances: 1
+  name: phase1
+  setup:
+    actions: []
+  workload:
+    actions:
+    - config:
+        script: "function run() {\n        // Send a request for authentication\n\
+          \        ctx.http_post(ctx.ctx, \"http://auth:8080\", \"{\\\"actions\\\"\
+          :[{\\\"name\\\":\\\"Script\\\",\\\"config\\\":{\\\"script\\\":\\\"function\
+          \ run() {\\\\n        // Burn\\\\n        ctx.burn(\\\\\\\"10ms\\\\\\\"\
+          );\\\\n\\\\n        auth_cache = ctx.get_service(\\\\\\\"auth-cache\\\\\\\
+          \");\\\\n        auth_cache.set(ctx.ctx, \\\\\\\"key\\\\\\\", \\\\\\\"value\\\
+          \\\\\");\\\\n        auth_cache.get(ctx.ctx, \\\\\\\"key\\\\\\\");\\\\n\
+          \    }\\\"}}]}\");\n\n        ctx.http_post(ctx.ctx, \"http://inventory:8080\"\
+          , \"{\\\"actions\\\":[{\\\"name\\\":\\\"Script\\\",\\\"config\\\":{\\\"\
+          script\\\":\\\"function run() {\\\\n        ctx.burn(\\\\\\\"10ms\\\\\\\"\
+          );\\\\n\\\\n        inventory_db = ctx.get_service(\\\\\\\"inventory-db\\\
+          \\\\\");\\\\n        inventory_db.query(ctx.ctx, \\\\\\\"CREATE TABLE IF\
+          \ NOT EXISTS videos (id text PRIMARY KEY, status text, created_at TIMESTAMP\
+          \ WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP);\\\\\\\");\\\\n        videos\
+          \ = inventory_db.query(ctx.ctx, \\\\\\\"SELECT * FROM videos ORDER BY created_at\
+          \ DESC LIMIT 1;\\\\\\\");\\\\n\\\\n        storage = ctx.get_service(\\\\\
+          \\\"storage\\\\\\\");\\\\n        vid = storage.get_object(ctx.ctx, \\\\\
+          \\\"videos\\\\\\\", videos[0].id);\\\\n\\\\n        ctx.print(\\\\\\\"Got\
+          \ video: \\\\\\\" + videos[0].id + \\\\\\\" with size: \\\\\\\" + vid.length\
+          \ + \\\\\\\" bytes\\\\\\\");\\\\n    }\\\"}}]}\"); \n    }"
+      name: Script

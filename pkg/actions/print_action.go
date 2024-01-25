@@ -2,6 +2,8 @@ package actions
 
 import (
 	"context"
+
+	"github.com/Causely/chaosmania/pkg"
 	"github.com/Causely/chaosmania/pkg/logger"
 	"go.uber.org/zap"
 )
@@ -13,7 +15,7 @@ type PrintConfig struct {
 }
 
 func (a *Print) Execute(ctx context.Context, cfg map[string]any) error {
-	config, err := ParseConfig[PrintConfig](cfg)
+	config, err := pkg.ParseConfig[PrintConfig](cfg)
 	if err != nil {
 		logger.FromContext(ctx).Warn("failed to parse config", zap.Error(err))
 		return err
@@ -26,7 +28,7 @@ func (a *Print) Execute(ctx context.Context, cfg map[string]any) error {
 }
 
 func (a *Print) ParseConfig(data map[string]any) (any, error) {
-	return ParseConfig[PrintConfig](data)
+	return pkg.ParseConfig[PrintConfig](data)
 }
 
 func init() {

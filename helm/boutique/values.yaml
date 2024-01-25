@@ -16,5 +16,9 @@ serviceMonitor:
   enabled: false
 
 otlp:
+  enabled: false
   endpoint: "" # http://tempo.monitoring:4318
   insecure: true
+
+datadog:
+  enabled: false

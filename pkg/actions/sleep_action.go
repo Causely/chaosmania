@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/Causely/chaosmania/pkg"
 	"github.com/Causely/chaosmania/pkg/logger"
 	"go.uber.org/zap"
 )
@@ -11,11 +12,11 @@ import (
 type Sleep struct{}
 
 type SleepConfig struct {
-	Duration Duration `json:"duration"`
+	Duration pkg.Duration `json:"duration"`
 }
 
 func (a *Sleep) Execute(ctx context.Context, cfg map[string]any) error {
-	config, err := ParseConfig[SleepConfig](cfg)
+	config, err := pkg.ParseConfig[SleepConfig](cfg)
 	if err != nil {
 		logger.FromContext(ctx).Warn("failed to parse config", zap.Error(err))
 		return err
@@ -30,7 +31,7 @@ func (a *Sleep) Execute(ctx context.Context, cfg map[string]any) error {
 }
 
 func (a *Sleep) ParseConfig(data map[string]any) (any, error) {
-	return ParseConfig[SleepConfig](data)
+	return pkg.ParseConfig[SleepConfig](data)
 }
 
 func init() {

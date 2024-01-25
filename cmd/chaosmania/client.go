@@ -12,6 +12,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/Causely/chaosmania/pkg"
 	"github.com/Causely/chaosmania/pkg/actions"
 	"github.com/urfave/cli/v2"
 	"go.uber.org/zap"
@@ -42,7 +43,7 @@ func loadPlan(logger *zap.Logger, path string) (actions.Plan, map[string]any, er
 		}
 	}
 
-	return plan, actions.Convert(raw).(map[string]any), nil
+	return plan, pkg.Convert(raw).(map[string]any), nil
 }
 
 func sendRequest(logger *zap.Logger, payload map[string]any, host string, port int64) error {
@@ -220,12 +221,14 @@ func executePhase(logger *zap.Logger, phase actions.Phase, raw map[string]any, h
 					errors := current.Errors - last.Errors
 
 					var latency time.Duration
+					var ok uint64
 					if requests > 0 {
 						latency = time.Duration(int64(duration/requests)) * time.Microsecond
+						ok = requests - errors
 					}
 
 					last = current
-					logger.Info(fmt.Sprintf("%.1f req/s, avg latency %v, %v errors", float64(requests)/float64(interval), latency, errors))
+					logger.Info(fmt.Sprintf("%.1f req/s, avg latency %v, %v errors, %v ok", float64(requests)/float64(interval), latency, errors, ok))
 				case <-ctx.Done():
 					return
 				}

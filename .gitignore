@@ -8,6 +8,7 @@ out/
 *.dll
 *.so
 *.dylib
+venv/
 
 # Test binary, built with `go test -c`
 *.test

@@ -1,0 +1,2 @@
+{{include "postgres.statefulset" "upload-db"}}
+{{include "postgres.service" "upload-db"}}

@@ -3,20 +3,19 @@ kind: Deployment
 metadata:
   name: productcatalog
   labels:
-    app.kubernetes.io/instance: productcatalog
-    app.kubernetes.io/name: productcatalog
+    {{include "common.labels" "productcatalog" | nindent 4}}
 spec:
   selector:
     matchLabels:
-      app.kubernetes.io/instance: productcatalog
-      app.kubernetes.io/name: productcatalog
+      {{include "common.labels" "productcatalog" | nindent 6}}
   template:
     metadata:
       labels:
-        app.kubernetes.io/instance: productcatalog
-        app.kubernetes.io/name: productcatalog
+        {{include "common.labels" "productcatalog" | nindent 8}}
     spec:
       containers:
       {{include "chaosmania.container" . | nindent 8}}
+      volumes:
+      {{include "common.volumes" . | nindent 6}}
 ---
 {{ include "chaosmania.service" "productcatalog" }}

@@ -1,0 +1,28 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: inventory
+  labels:
+    {{include "common.labels" "inventory" | nindent 4}}
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      {{include "common.labels" "inventory" | nindent 6}}
+  template:
+    metadata:
+      labels:
+        {{include "common.labels" "inventory" | nindent 8}}
+    spec:
+      containers: 
+      {{include "chaosmania.container" . | nindent 6}}
+          - name: ENABLED_BACKGROUND_SERVICES
+            value: "{{ .Values.inventory.background_services | join "," }}"
+      volumes:
+      {{include "common.volumes" . | nindent 6}}
+---
+{{include "chaosmania.service" "inventory"}}
+---
+{{ if .Values.hpa.enabled }}
+{{ include "chaosmania.hpa" "inventory" }}
+{{ end }}

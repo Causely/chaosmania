@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/Causely/chaosmania/pkg"
 	"github.com/Causely/chaosmania/pkg/logger"
 	"go.uber.org/zap"
 )
@@ -11,11 +12,11 @@ import (
 type Burn struct{}
 
 type BurnConfig struct {
-	Duration Duration `json:"duration"`
+	Duration pkg.Duration `json:"duration"`
 }
 
 func (a *Burn) Execute(ctx context.Context, cfg map[string]any) error {
-	config, err := ParseConfig[BurnConfig](cfg)
+	config, err := pkg.ParseConfig[BurnConfig](cfg)
 	if err != nil {
 		logger.FromContext(ctx).Warn("failed to parse config", zap.Error(err))
 		return err
@@ -29,7 +30,7 @@ func (a *Burn) Execute(ctx context.Context, cfg map[string]any) error {
 }
 
 func (a *Burn) ParseConfig(data map[string]any) (any, error) {
-	return ParseConfig[BurnConfig](data)
+	return pkg.ParseConfig[BurnConfig](data)
 }
 
 func init() {

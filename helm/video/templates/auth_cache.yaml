@@ -1,0 +1,2 @@
+{{include "redis.statefulset" "auth-cache"}}
+{{include "redis.service" "auth-cache"}}

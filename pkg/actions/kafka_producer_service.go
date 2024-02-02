@@ -3,6 +3,11 @@ package actions
 import (
 	"context"
 	"crypto/tls"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	semconv "go.opentelemetry.io/otel/semconv/v1.21.0"
+	oteltrace "go.opentelemetry.io/otel/trace"
 	"time"
 
 	"github.com/Causely/chaosmania/pkg"
@@ -42,6 +47,24 @@ func (s *KafkaProducerService) Type() ServiceType {
 	return "kafka-producer"
 }
 
+// NewOTelInterceptor processes span for intercepted messages and add some
+// headers with the span data.
+//func NewOTelInterceptor(brokers []string) *OTelInterceptor {
+//	oi := OTelInterceptor{}
+//	oi.tracer = sdktrace.NewTracerProvider().Tracer("chaosmania/kafka-producer")
+//
+//	// These are based on the spec, which was reachable as of 2020-05-15
+//	// https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/messaging.md
+//	oi.fixedAttrs = []attribute.KeyValue{
+//		attribute.String(string(semconv.MessagingDestinationNameKey), "topic"),
+//		attribute.String("span.otel.kind", "PRODUCER"),
+//		attribute.String("messaging.system", "kafka"),
+//		attribute.String("net.transport", "IP.TCP"),
+//		attribute.String("messaging.url", strings.Join(brokers, ",")),
+//	}
+//	return &oi
+//}
+
 func getProducerMsgSize(msg *sarama.ProducerMessage) (size int64) {
 	for _, header := range msg.Headers {
 		size += int64(len(header.Key) + len(header.Value))
@@ -55,7 +78,7 @@ func getProducerMsgSize(msg *sarama.ProducerMessage) (size int64) {
 	return size
 }
 
-func (s *KafkaProducerService) Produce(ctx context.Context, topic string, msg string) error {
+func (s *KafkaProducerService) ddProduce(ctx context.Context, topic string, msg string) error {
 	span, _ := tracer.SpanFromContext(ctx)
 
 	m := &sarama.ProducerMessage{Topic: topic, Value: sarama.StringEncoder(msg)}
@@ -72,11 +95,45 @@ func (s *KafkaProducerService) Produce(ctx context.Context, topic string, msg st
 	partition, offset, err := s.producer.SendMessage(m)
 	if err != nil {
 		logger.FromContext(ctx).Warn("failed to send message", zap.Error(err))
+		//span.Finish(tracer.WithError(err))
 		return err
 	}
 
+	tracer.TrackKafkaProduceOffset(topic, partition, offset)
+
+	return nil
+}
+
+func (s *KafkaProducerService) Produce(ctx context.Context, topic string, msg string) error {
 	if pkg.IsDatadogEnabled() {
-		tracer.TrackKafkaProduceOffset(topic, partition, offset)
+		return s.ddProduce(ctx, topic, msg)
+	}
+
+	prodTracer := otel.GetTracerProvider().Tracer("kafka-producer")
+
+	ctx, span := prodTracer.Start(ctx, "Produce Message", oteltrace.WithSpanKind(oteltrace.SpanKindProducer))
+	defer span.End()
+
+	m := &sarama.ProducerMessage{Topic: topic, Value: sarama.StringEncoder(msg)}
+
+	span.SetAttributes(attribute.String("span.Kind", "producer"))
+	span.SetAttributes(semconv.MessagingKafkaDestinationPartition(int(m.Partition)))
+	span.SetAttributes(semconv.MessagingKafkaMessageOffset(int(m.Offset)))
+	span.SetAttributes(semconv.MessagingDestinationName(topic))
+	span.SetAttributes(semconv.MessagingSystem("kafka"))
+	span.SetAttributes(semconv.ServiceName(s.config.TracingServiceName))
+
+	// https://opentelemetry.io/docs/specs/semconv/messaging/kafka/#:~:text=For%20Apache%20Kafka%20producers
+	span.SetAttributes(semconv.PeerService(s.config.Brokers[0])) // TODO: handle array?
+
+	setProduceCheckpoint(m)
+
+	_, _, err := s.producer.SendMessage(m)
+	if err != nil {
+		logger.FromContext(ctx).Warn("failed to send message", zap.Error(err))
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+		return err
 	}
 
 	return nil
@@ -117,11 +174,11 @@ func NewKafkaProducerService(name ServiceName, config map[string]any) (Service, 
 		return nil, err
 	}
 
-	if pkg.IsDatadogEnabled() {
-		producer = saramatrace.WrapSyncProducer(c,
-			producer,
-			saramatrace.WithServiceName(cfg.TracingServiceName))
-	}
+	//if pkg.IsDatadogEnabled() {
+	producer = saramatrace.WrapSyncProducer(c,
+		producer,
+		saramatrace.WithServiceName(cfg.TracingServiceName))
+	//}
 
 	kafkaService.producer = producer
 

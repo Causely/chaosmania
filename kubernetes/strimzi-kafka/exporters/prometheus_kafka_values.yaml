@@ -1,5 +1,5 @@
 kafkaServer:
-  - super-heroes-kafka-brokers.chaosmania.svc.cluster.local:9092
+  - chaosmania-kafka-cluster-kafka-brokers:9092
 
 service:
   annotations:

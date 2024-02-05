@@ -50,7 +50,7 @@ background_services:
     config:
       tracing_service_name: data-broker
       brokers:
-        - "super-heroes-kafka-brokers:9092"
+        - "chaosmania-kafka-cluster-kafka-brokers:9092"
       username: "" # TODO
       password: "" # TODO
       tls_enable: false
@@ -102,7 +102,7 @@ background_services:
     config:
       tracing_service_name: data-broker
       brokers:
-        - "super-heroes-kafka-brokers:9092"
+        - "chaosmania-kafka-cluster-kafka-brokers:9092"
       username: "" # TODO
       password: "" # TODO
       tls_enable: false
@@ -130,7 +130,7 @@ background_services:
     config:
       tracing_service_name: data-broker
       brokers:
-        - "super-heroes-kafka-brokers:9092"
+        - "chaosmania-kafka-cluster-kafka-brokers:9092"
       username: "" # TODO
       password: "" # TODO
       tls_enable: false
@@ -155,6 +155,17 @@ background_services:
 
 
 services:
+  - name: "data-broker-producer"
+    type: kafka-producer
+    config:
+      tracing_service_name: data-broker
+      brokers:
+        - "chaosmania-kafka-cluster-kafka-brokers:9092"
+      username: "" # TODO
+      password: "" # TODO
+      tls_enable: false
+      sasl_enable: false
+
   - name: auth-cache
     type: redis
     config:
@@ -184,23 +195,6 @@ services:
       password: postgres
       port: 5432
       user: postgres
-
-  - name: "data-broker-producer"
-    type: kafka-producer
-    config:
-      tracing_service_name: data-broker
-      brokers:
-        - "super-heroes-kafka-brokers:9092" # TODO
-      username: "" # TODO
-      password: "" # TODO
-      tls_enable: false
-      sasl_enable: false
-
-  - name: "message-broker-producer"
-    type: rabbitmq-producer
-    config:
-      tracing_service_name: message-broker
-      url: "amqp://guest:guest@message-broker:5672/"
 
   - name: "storage"
     type: "minio"

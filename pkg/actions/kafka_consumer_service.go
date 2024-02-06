@@ -229,7 +229,7 @@ func (consumer *KafkaConsumerService) handleMessage(ctx context.Context, message
 	span.SetAttributes(semconv.MessagingSystem("kafka"))
 
 	// https://opentelemetry.io/docs/specs/semconv/messaging/kafka/#:~:text=For%20Apache%20Kafka%20producers
-	span.SetAttributes(semconv.ServiceName(consumer.config.Brokers[0])) // TODO: handle array?
+	span.SetAttributes(semconv.ServiceName(consumer.config.TracingServiceName))
 
 	//setConsumeCheckpoint(true, consumer.config.Group, message)
 

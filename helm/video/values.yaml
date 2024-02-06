@@ -21,7 +21,7 @@ otlp:
   insecure: true
 
 datadog:
-  enabled: false
+  enabled: true
 
 hpa:
   enabled: false
@@ -50,11 +50,11 @@ background_services:
     config:
       tracing_service_name: data-broker
       brokers:
-        - "chaosmania-kafka-cluster-kafka-brokers:9092"
+        - "" # TODO
       username: "" # TODO
       password: "" # TODO
-      tls_enable: false
-      sasl_enable: false
+      tls_enable: true
+      sasl_enable: true
       topic: test1
       group: encoder-group
       script: |
@@ -65,7 +65,7 @@ background_services:
           var raw_data = data.raw_data;
 
           // Update the video status to encoding
-          message_broker = ctx.get_service("data-broker-producer");
+          message_broker = ctx.get_service("message-broker-producer");
           msg = JSON.stringify({
               "video_id": video_id,
               "status": "encoding"
@@ -98,17 +98,11 @@ background_services:
   # - It consumes messages from the message broker (the video status, send by the encoder)
   # - Updates the video status in the upload database
   - name: "upload-message-broker-consumer"
-    type: kafka-consumer
+    type: rabbitmq-consumer
     config:
-      tracing_service_name: data-broker
-      brokers:
-        - "chaosmania-kafka-cluster-kafka-brokers:9092"
-      username: "" # TODO
-      password: "" # TODO
-      tls_enable: false
-      sasl_enable: false
-      topic: upload-video-encoding
-      group: upload-group
+      tracing_service_name: message-broker
+      url: "amqp://guest:guest@message-broker:5672/"
+      queue: "upload-video-encoding"
       script: |
         function run() {
           msg = ctx.get_message()
@@ -126,17 +120,11 @@ background_services:
   # - It consumes messages from the message broker (the video status, send by the encoder)
   # - Updates the video status in the inventory database
   - name: "inventory-message-broker-consumer"
-    type: kafka-consumer
+    type: rabbitmq-consumer
     config:
-      tracing_service_name: data-broker
-      brokers:
-        - "chaosmania-kafka-cluster-kafka-brokers:9092"
-      username: "" # TODO
-      password: "" # TODO
-      tls_enable: false
-      sasl_enable: false
-      topic: "inventory-video-encoding"
-      group: inventory-group
+      tracing_service_name: message-broker
+      url: "amqp://guest:guest@message-broker:5672/"
+      queue: "inventory-video-encoding"
       script: |
         function run() {
           msg = ctx.get_message()
@@ -165,6 +153,12 @@ services:
       password: "" # TODO
       tls_enable: false
       sasl_enable: false
+
+  - name: "message-broker-producer"
+    type: rabbitmq-producer
+    config:
+      tracing_service_name: message-broker
+      url: "amqp://guest:guest@message-broker:5672/"
 
   - name: auth-cache
     type: redis

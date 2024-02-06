@@ -124,7 +124,7 @@ func (s *KafkaProducerService) Produce(ctx context.Context, topic string, msg st
 	span.SetAttributes(semconv.ServiceName(s.config.TracingServiceName))
 
 	// https://opentelemetry.io/docs/specs/semconv/messaging/kafka/#:~:text=For%20Apache%20Kafka%20producers
-	span.SetAttributes(semconv.PeerService(s.config.Brokers[0])) // TODO: handle array?
+	span.SetAttributes(semconv.PeerService(s.config.TracingServiceName))
 
 	setProduceCheckpoint(m)
 

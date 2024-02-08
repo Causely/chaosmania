@@ -25,7 +25,7 @@ require (
 	go.opentelemetry.io/otel/sdk v1.23.0
 	go.opentelemetry.io/otel/trace v1.23.0
 	go.uber.org/zap v1.26.0
-	gopkg.in/DataDog/dd-trace-go.v1 v1.60.0
+	gopkg.in/DataDog/dd-trace-go.v1 v1.60.1
 	gopkg.in/yaml.v2 v2.4.0
 )
 

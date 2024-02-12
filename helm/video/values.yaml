@@ -49,7 +49,7 @@ background_services:
     type: kafka-consumer
     config:
       tracing_service_name: data-broker
-      brokers: 
+      brokers:
         - "" # TODO
       username: "" # TODO
       password: "" # TODO
@@ -177,7 +177,7 @@ services:
     type: kafka-producer
     config:
       tracing_service_name: data-broker
-      brokers: 
+      brokers:
         - "" # TODO
       username: "" # TODO
       password: "" # TODO

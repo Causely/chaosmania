@@ -1,0 +1,22 @@
+kafkaServer:
+  - chaosmania-kafka-cluster-kafka-brokers:9092
+
+service:
+  annotations:
+    prometheus.io/port: "9308"
+    prometheus.io/scrape: "true"
+
+prometheus:
+  serviceMonitor:
+    enabled: true
+    namespace: chaosmania
+
+rbac:
+  # Specifies whether RBAC resources should be created
+  create: false
+  # Specifies whether a PodSecurityPolicy should be created
+  pspEnabled: false
+
+serviceAccount:
+  # Specifies whether a ServiceAccount should be created
+  create: false

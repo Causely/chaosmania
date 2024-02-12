@@ -10,6 +10,10 @@ import (
 	"github.com/Causely/chaosmania/pkg"
 	"github.com/Causely/chaosmania/pkg/logger"
 	"github.com/IBM/sarama"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/codes"
+	semconv "go.opentelemetry.io/otel/semconv/v1.21.0"
+	oteltrace "go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 	saramatrace "gopkg.in/DataDog/dd-trace-go.v1/contrib/IBM/sarama.v1"
 	"gopkg.in/DataDog/dd-trace-go.v1/datastreams"
@@ -167,7 +171,7 @@ func getConsumerMsgSize(msg *sarama.ConsumerMessage) (size int64) {
 	return size + int64(len(msg.Value)+len(msg.Key))
 }
 
-func (consumer *KafkaConsumerService) handleMessage(ctx context.Context, message *sarama.ConsumerMessage) error {
+func (consumer *KafkaConsumerService) ddhHandleMessage(ctx context.Context, message *sarama.ConsumerMessage) error {
 	span, ctx := tracer.StartSpanFromContext(ctx, "process_message",
 		tracer.ResourceName("process_message"),
 	)
@@ -206,6 +210,44 @@ func (consumer *KafkaConsumerService) handleMessage(ctx context.Context, message
 
 	err = ACTIONS["Script"].Execute(ctx, c)
 	span.Finish(tracer.WithError(err))
+	return err
+}
+
+func (consumer *KafkaConsumerService) handleMessage(ctx context.Context, message *sarama.ConsumerMessage) error {
+	if pkg.IsDatadogEnabled() {
+		return consumer.ddhHandleMessage(ctx, message)
+	}
+	consumeTracer := otel.GetTracerProvider().Tracer("kafka-consumer")
+	ctx, span := consumeTracer.Start(ctx, "Consume Topic"+consumer.config.Topic, oteltrace.WithSpanKind(oteltrace.SpanKindConsumer))
+	defer span.End()
+	span.SetAttributes(semconv.MessagingKafkaDestinationPartition(int(message.Partition)))
+	span.SetAttributes(semconv.MessagingKafkaMessageOffset(int(message.Offset)))
+	span.SetAttributes(semconv.MessagingDestinationName(consumer.config.Topic))
+	span.SetAttributes(semconv.MessagingKafkaConsumerGroup(consumer.config.Group))
+	span.SetAttributes(semconv.MessagingSystem("kafka"))
+
+	// https://opentelemetry.io/docs/specs/semconv/messaging/kafka/#:~:text=For%20Apache%20Kafka%20producers
+	span.SetAttributes(semconv.ServiceName(consumer.config.TracingServiceName))
+
+	//setConsumeCheckpoint(true, consumer.config.Group, message)
+
+	cfg := ScriptConfig{
+		Script:  consumer.config.Script,
+		Message: string(message.Value),
+	}
+
+	c, err := pkg.ConfigToMap(&cfg)
+	if err != nil {
+		return err
+	}
+
+	err = ACTIONS["Script"].Execute(ctx, c)
+	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+	} else {
+		span.SetStatus(codes.Ok, "message sent")
+	}
 	return err
 }
 

@@ -4,17 +4,16 @@ import (
 	"context"
 	"crypto/tls"
 	"errors"
-	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/codes"
-	semconv "go.opentelemetry.io/otel/semconv/v1.21.0"
-	oteltrace "go.opentelemetry.io/otel/trace"
 	"sync"
 	"time"
 
 	"github.com/Causely/chaosmania/pkg"
 	"github.com/Causely/chaosmania/pkg/logger"
 	"github.com/IBM/sarama"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/codes"
+	semconv "go.opentelemetry.io/otel/semconv/v1.21.0"
+	oteltrace "go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 	saramatrace "gopkg.in/DataDog/dd-trace-go.v1/contrib/IBM/sarama.v1"
 	"gopkg.in/DataDog/dd-trace-go.v1/datastreams"
@@ -221,7 +220,6 @@ func (consumer *KafkaConsumerService) handleMessage(ctx context.Context, message
 	consumeTracer := otel.GetTracerProvider().Tracer("kafka-consumer")
 	ctx, span := consumeTracer.Start(ctx, "Consume Topic"+consumer.config.Topic, oteltrace.WithSpanKind(oteltrace.SpanKindConsumer))
 	defer span.End()
-	span.SetAttributes(attribute.String("span.Kind", "consumer"))
 	span.SetAttributes(semconv.MessagingKafkaDestinationPartition(int(message.Partition)))
 	span.SetAttributes(semconv.MessagingKafkaMessageOffset(int(message.Offset)))
 	span.SetAttributes(semconv.MessagingDestinationName(consumer.config.Topic))

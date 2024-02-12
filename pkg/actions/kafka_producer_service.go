@@ -3,16 +3,15 @@ package actions
 import (
 	"context"
 	"crypto/tls"
-	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/codes"
-	semconv "go.opentelemetry.io/otel/semconv/v1.21.0"
-	oteltrace "go.opentelemetry.io/otel/trace"
 	"time"
 
 	"github.com/Causely/chaosmania/pkg"
 	"github.com/Causely/chaosmania/pkg/logger"
 	"github.com/IBM/sarama"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/codes"
+	semconv "go.opentelemetry.io/otel/semconv/v1.21.0"
+	oteltrace "go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 	saramatrace "gopkg.in/DataDog/dd-trace-go.v1/contrib/IBM/sarama.v1"
 	"gopkg.in/DataDog/dd-trace-go.v1/datastreams"
@@ -116,7 +115,6 @@ func (s *KafkaProducerService) Produce(ctx context.Context, topic string, msg st
 
 	m := &sarama.ProducerMessage{Topic: topic, Value: sarama.StringEncoder(msg)}
 
-	span.SetAttributes(attribute.String("span.Kind", "producer"))
 	span.SetAttributes(semconv.MessagingKafkaDestinationPartition(int(m.Partition)))
 	span.SetAttributes(semconv.MessagingKafkaMessageOffset(int(m.Offset)))
 	span.SetAttributes(semconv.MessagingDestinationName(topic))
@@ -174,11 +172,9 @@ func NewKafkaProducerService(name ServiceName, config map[string]any) (Service, 
 		return nil, err
 	}
 
-	//if pkg.IsDatadogEnabled() {
 	producer = saramatrace.WrapSyncProducer(c,
 		producer,
 		saramatrace.WithServiceName(cfg.TracingServiceName))
-	//}
 
 	kafkaService.producer = producer
 

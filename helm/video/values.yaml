@@ -17,7 +17,7 @@ serviceMonitor:
 
 otlp:
   enabled: false
-  endpoint: "" # "http://opentelemetry-collector.default:4318" ## or http://tempo.monitoring:4318
+  endpoint: "" # http://tempo.monitoring:4318
   insecure: true
 
 datadog:
@@ -143,23 +143,6 @@ background_services:
 
 
 services:
-  - name: "data-broker-producer"
-    type: kafka-producer
-    config:
-      tracing_service_name: data-broker
-      brokers:
-        - "chaosmania-kafka-cluster-kafka-brokers:9092"
-      username: "" # TODO
-      password: "" # TODO
-      tls_enable: false
-      sasl_enable: false
-
-  - name: "message-broker-producer"
-    type: rabbitmq-producer
-    config:
-      tracing_service_name: message-broker
-      url: "amqp://guest:guest@message-broker:5672/"
-
   - name: auth-cache
     type: redis
     config:
@@ -189,6 +172,23 @@ services:
       password: postgres
       port: 5432
       user: postgres
+
+  - name: "data-broker-producer"
+    type: kafka-producer
+    config:
+      tracing_service_name: data-broker
+      brokers:
+        - "" # TODO
+      username: "" # TODO
+      password: "" # TODO
+      tls_enable: true
+      sasl_enable: true
+
+  - name: "message-broker-producer"
+    type: rabbitmq-producer
+    config:
+      tracing_service_name: message-broker
+      url: "amqp://guest:guest@message-broker:5672/"
 
   - name: "storage"
     type: "minio"

@@ -16,7 +16,7 @@ require (
 	github.com/rotisserie/eris v0.5.4
 	github.com/streadway/amqp v1.1.0
 	github.com/urfave/cli/v2 v2.27.1
-	go.mongodb.org/mongo-driver v1.13.1
+	go.mongodb.org/mongo-driver v1.14.0
 	go.nhat.io/otelsql v0.12.0
 	go.opentelemetry.io/contrib/instrumentation/go.mongodb.org/mongo-driver/mongo/otelmongo v0.48.0
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.48.0

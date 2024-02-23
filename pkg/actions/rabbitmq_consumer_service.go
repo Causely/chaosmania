@@ -124,6 +124,7 @@ func (s *RabbitMQConsumerService) handleMessage(ctx context.Context, msg amqp.De
 
 	err := tracer.Inject(span.Context(), ctx)
 	if err != nil {
+		msg.Ack(false)
 		return err
 	}
 
@@ -134,6 +135,7 @@ func (s *RabbitMQConsumerService) handleMessage(ctx context.Context, msg amqp.De
 
 	c, err := pkg.ConfigToMap(&cfg)
 	if err != nil {
+		msg.Ack(false)
 		child.Finish(tracer.WithError(err))
 		return err
 	}
@@ -143,7 +145,6 @@ func (s *RabbitMQConsumerService) handleMessage(ctx context.Context, msg amqp.De
 		logger.FromContext(ctx).Warn("failed to execute script", zap.Error(err))
 	}
 
-	msg.Ack(false)
 	return nil
 }
 

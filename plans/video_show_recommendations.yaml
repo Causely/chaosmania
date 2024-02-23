@@ -10,38 +10,31 @@ phases:
   workload:
     actions:
     - config:
-        script: "function run() {\n        // Send a request for authentication\n\
-          \        ctx.http_post(ctx.ctx, \"http://auth:8080\", \"{\\\"actions\\\"\
-          :[{\\\"name\\\":\\\"Script\\\",\\\"config\\\":{\\\"script\\\":\\\"function\
-          \ run() {\\\\n        // Burn\\\\n        ctx.burn(\\\\\\\"10ms\\\\\\\"\
-          );\\\\n\\\\n        auth_cache = ctx.get_service(\\\\\\\"auth-cache\\\\\\\
-          \");\\\\n        auth_cache.set(ctx.ctx, \\\\\\\"key\\\\\\\", \\\\\\\"value\\\
-          \\\\\");\\\\n        auth_cache.get(ctx.ctx, \\\\\\\"key\\\\\\\");\\\\n\
-          \    }\\\"}}]}\");\n\n        ctx.http_post(ctx.ctx, \"http://recommendation:8080\"\
-          , \"{\\\"actions\\\":[{\\\"name\\\":\\\"Script\\\",\\\"config\\\":{\\\"\
-          script\\\":\\\"function run() {\\\\n        // Send a request for authentication\\\
-          \\n        ctx.http_post(ctx.ctx, \\\\\\\"http://inventory:8080\\\\\\\"\
-          , \\\\\\\"{\\\\\\\\\\\\\\\"actions\\\\\\\\\\\\\\\":[{\\\\\\\\\\\\\\\"name\\\
-          \\\\\\\\\\\\\":\\\\\\\\\\\\\\\"Script\\\\\\\\\\\\\\\",\\\\\\\\\\\\\\\"config\\\
-          \\\\\\\\\\\\\":{\\\\\\\\\\\\\\\"script\\\\\\\\\\\\\\\":\\\\\\\\\\\\\\\"\
-          function run() {\\\\\\\\\\\\\\\\n        ctx.burn(\\\\\\\\\\\\\\\\\\\\\\\
-          \\\\\\\\\"10ms\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\");\\\\\\\\\\\\\\\\n\\\\\\\\\
-          \\\\\\\\n        var inventory_db = ctx.get_service(\\\\\\\\\\\\\\\\\\\\\
-          \\\\\\\\\\\"inventory-db\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\");\\\\\\\\\\\\\\\
-          \\n        var videos = inventory_db.query(ctx.ctx, \\\\\\\\\\\\\\\\\\\\\
-          \\\\\\\\\\\"SELECT * FROM videos ORDER BY created_at DESC LIMIT 20;\\\\\\\
-          \\\\\\\\\\\\\\\\\\\\\\\\\");\\\\\\\\\\\\\\\\n\\\\\\\\\\\\\\\\n        //\
-          \ now get all the thumbnails\\\\\\\\\\\\\\\\n        var size = 0;\\\\\\\
-          \\\\\\\\\\n        storage = ctx.get_service(\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
-          \\\"storage\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\");\\\\\\\\\\\\\\\\n        for\
-          \ (var i = 0; i < videos.length; i++) {\\\\\\\\\\\\\\\\n            var\
-          \ obj = storage.get_object(ctx.ctx, \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\"thumbnails\\\
-          \\\\\\\\\\\\\\\\\\\\\\\\\\\\\", videos[i].id);\\\\\\\\\\\\\\\\n        \
-          \    size += obj.length;\\\\\\\\\\\\\\\\n        }\\\\\\\\\\\\\\\\n\\\\\\\
-          \\\\\\\\\\n        ctx.print(\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\"Got \\\\\\\\\
-          \\\\\\\\\\\\\\\\\\\\\\\" + videos.length + \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
-          \" videos with total size: \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\" + size + \\\\\
-          \\\\\\\\\\\\\\\\\\\\\\\\\\\" bytes\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\");\\\\\
-          \\\\\\\\\\\\n    }\\\\\\\\\\\\\\\"}}]}\\\\\\\");\\\\n    }\\\"}}]}\"); \n\
-          \    }"
-      name: Script
+        name: Script
+        script: |
+          function run() {
+            // Send a request for authentication
+            ctx.http_post(ctx.ctx, "http://auth:8080", {actions:[{name:Script,config:{script:function run() {
+              // Burn
+              ctx.burn("10ms");
+              auth_cache = ctx.get_service("auth-cache");
+              auth_cache.set(ctx.ctx, key, value);
+              auth_cache.get(ctx.ctx, key);
+            }}}]});
+      
+            ctx.http_post(ctx.ctx, "http://recommendation:8080", {actions:[{name:Script,config:{script:function run() {
+              // Send a request for authentication
+              ctx.http_post(ctx.ctx, "http://inventory:8080", {actions:[{name:Script,config:{script: function run() {
+                ctx.burn("10ms");
+                var inventory_db = ctx.get_service("inventory-db");
+                var videos = inventory_db.query(ctx.ctx, "SELECT * FROM videos ORDER BY created_at DESC LIMIT 20;");
+                // Now get all the thumbnails
+                var size = 0;
+                storage = ctx.get_service("storage");
+                for (var i = 0; i < videos.length; i++) {
+                    var obj = storage.get_object(ctx.ctx, thumbnails, videos[i].id); size += obj.length;
+                }
+                ctx.print("Got " + videos.length + " videos with total size: " + size + " bytes");
+              }}}]});
+            }}}]}); 
+          }

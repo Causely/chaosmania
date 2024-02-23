@@ -189,7 +189,7 @@ spec:
       terminationGracePeriodSeconds: 10
       containers:
         - name: redis
-          image: redis:7.0-bullseye
+          image: redis:7.2.4-bookworm
           ports:
             - containerPort: 6379
               name: redis

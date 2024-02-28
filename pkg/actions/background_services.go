@@ -15,7 +15,7 @@ type BackgroundServiceName string
 
 type BackgroundServiceConstructor func(BackgroundServiceName, map[string]any) BackgroundService
 
-var BACKGROUND_SERVICE_TPES map[BackgroundServiceType]BackgroundServiceConstructor = make(map[BackgroundServiceType]BackgroundServiceConstructor)
+var BACKGROUND_SERVICE_TYPES map[BackgroundServiceType]BackgroundServiceConstructor = make(map[BackgroundServiceType]BackgroundServiceConstructor)
 var BackgroundManager *BackgroundServiceManager = NewBackgroundServiceManager()
 
 type BackgroundService interface {
@@ -49,10 +49,10 @@ func NewBackgroundServiceManager() *BackgroundServiceManager {
 	}
 }
 
-func (m *BackgroundServiceManager) Run(ctx context.Context) {
-	m.context = ctx
+func (bsm *BackgroundServiceManager) Run(ctx context.Context) {
+	bsm.context = ctx
 
-	for _, service := range m.services {
+	for _, service := range bsm.services {
 		go func(service *ManagedBackgroundService) {
 			err := service.Service.Run(ctx)
 			if err != nil {
@@ -62,20 +62,20 @@ func (m *BackgroundServiceManager) Run(ctx context.Context) {
 	}
 }
 
-func (m *BackgroundServiceManager) Register(s BackgroundService) error {
-	if _, ok := m.services[s.Name()]; ok {
+func (bsm *BackgroundServiceManager) Register(s BackgroundService) error {
+	if _, ok := bsm.services[s.Name()]; ok {
 		return errors.New("service already registered")
 	}
 
 	fmt.Println("Registering background service", s.Name(), "of type", s.Type())
-	m.services[s.Name()] = &ManagedBackgroundService{
+	bsm.services[s.Name()] = &ManagedBackgroundService{
 		Service: s,
 	}
 
 	return nil
 }
 
-func (m *BackgroundServiceManager) LoadFromFile(path string) error {
+func (bsm *BackgroundServiceManager) LoadFromFile(path string) error {
 	enabledServices := os.Getenv("ENABLED_BACKGROUND_SERVICES")
 	if enabledServices == "" {
 		return nil
@@ -102,13 +102,13 @@ func (m *BackgroundServiceManager) LoadFromFile(path string) error {
 			continue
 		}
 
-		constructor, ok := BACKGROUND_SERVICE_TPES[service.Type]
+		constructor, ok := BACKGROUND_SERVICE_TYPES[service.Type]
 		if !ok {
 			return errors.New("background service type not found: " + string(service.Type))
 		}
 
 		s := constructor(service.Name, service.Config)
-		err := m.Register(s)
+		err := bsm.Register(s)
 		if err != nil {
 			return err
 		}

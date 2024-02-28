@@ -11,8 +11,9 @@ import (
 	"github.com/Causely/chaosmania/pkg/logger"
 	"github.com/IBM/sarama"
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
-	semconv "go.opentelemetry.io/otel/semconv/v1.21.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.24.0"
 	oteltrace "go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 	saramatrace "gopkg.in/DataDog/dd-trace-go.v1/contrib/IBM/sarama.v1"
@@ -29,15 +30,16 @@ type KafkaConsumerService struct {
 }
 
 type KafkaConsumerServiceConfig struct {
-	Username           string   `json:"username"`
-	Password           string   `json:"password"`
-	TLSEnable          bool     `json:"tls_enable"`
-	SASLEnable         bool     `json:"sasl_enable"`
-	Brokers            []string `json:"brokers"`
-	Topic              string   `json:"topic"`
-	Script             string   `json:"script"`
-	TracingServiceName string   `json:"tracing_service_name"`
-	Group              string   `json:"group"`
+	Username      string   `json:"username"`
+	Password      string   `json:"password"`
+	TLSEnable     bool     `json:"tls_enable"`
+	SASLEnable    bool     `json:"sasl_enable"`
+	PeerService   string   `json:"peer_service"`
+	PeerNamespace string   `json:"peer_namespace"`
+	Brokers       []string `json:"brokers"`
+	Topic         string   `json:"topic"`
+	Script        string   `json:"script"`
+	Group         string   `json:"group"`
 }
 
 func (s *KafkaConsumerService) Name() BackgroundServiceName {
@@ -117,7 +119,7 @@ func NewKafkaConsumerService(name BackgroundServiceName, config map[string]any) 
 }
 
 func init() {
-	BACKGROUND_SERVICE_TPES["kafka-consumer"] = func(name BackgroundServiceName, m map[string]any) BackgroundService {
+	BACKGROUND_SERVICE_TYPES["kafka-consumer"] = func(name BackgroundServiceName, m map[string]any) BackgroundService {
 		s, err := NewKafkaConsumerService(name, m)
 		if err != nil {
 			panic(err)
@@ -171,7 +173,7 @@ func getConsumerMsgSize(msg *sarama.ConsumerMessage) (size int64) {
 	return size + int64(len(msg.Value)+len(msg.Key))
 }
 
-func (consumer *KafkaConsumerService) ddhHandleMessage(ctx context.Context, message *sarama.ConsumerMessage) error {
+func (consumer *KafkaConsumerService) ddHandleMessage(ctx context.Context, message *sarama.ConsumerMessage) error {
 	span, ctx := tracer.StartSpanFromContext(ctx, "process_message",
 		tracer.ResourceName("process_message"),
 	)
@@ -189,9 +191,9 @@ func (consumer *KafkaConsumerService) ddhHandleMessage(ctx context.Context, mess
 		tracer.Tag(ext.MessagingSystem, ext.MessagingSystemKafka),
 		tracer.Measured(),
 
-		tracer.Tag("topic", consumer.config.Topic),             // Required tag
-		tracer.Tag("group", consumer.config.Group),             // Required tag
-		tracer.ServiceName(consumer.config.TracingServiceName), // Required tag
+		tracer.Tag("topic", consumer.config.Topic),      // Required tag
+		tracer.Tag("group", consumer.config.Group),      // Required tag
+		tracer.ServiceName(consumer.config.PeerService), // Required tag
 		tracer.ChildOf(span.Context()),
 	)
 	child.Finish()
@@ -215,19 +217,20 @@ func (consumer *KafkaConsumerService) ddhHandleMessage(ctx context.Context, mess
 
 func (consumer *KafkaConsumerService) handleMessage(ctx context.Context, message *sarama.ConsumerMessage) error {
 	if pkg.IsDatadogEnabled() {
-		return consumer.ddhHandleMessage(ctx, message)
+		return consumer.ddHandleMessage(ctx, message)
 	}
 	consumeTracer := otel.GetTracerProvider().Tracer("kafka-consumer")
-	ctx, span := consumeTracer.Start(ctx, "Consume Topic"+consumer.config.Topic, oteltrace.WithSpanKind(oteltrace.SpanKindConsumer))
+	ctx, span := consumeTracer.Start(ctx, "Consume Topic "+consumer.config.Topic, oteltrace.WithSpanKind(oteltrace.SpanKindConsumer))
 	defer span.End()
 	span.SetAttributes(semconv.MessagingKafkaDestinationPartition(int(message.Partition)))
 	span.SetAttributes(semconv.MessagingKafkaMessageOffset(int(message.Offset)))
 	span.SetAttributes(semconv.MessagingDestinationName(consumer.config.Topic))
 	span.SetAttributes(semconv.MessagingKafkaConsumerGroup(consumer.config.Group))
-	span.SetAttributes(semconv.MessagingSystem("kafka"))
+	span.SetAttributes(semconv.MessagingSystemKafka)
 
 	// https://opentelemetry.io/docs/specs/semconv/messaging/kafka/#:~:text=For%20Apache%20Kafka%20producers
-	span.SetAttributes(semconv.ServiceName(consumer.config.TracingServiceName))
+	span.SetAttributes(semconv.PeerService(consumer.config.PeerService))
+	span.SetAttributes(attribute.String("peer.namespace", consumer.config.PeerNamespace))
 
 	//setConsumeCheckpoint(true, consumer.config.Group, message)
 
@@ -246,7 +249,7 @@ func (consumer *KafkaConsumerService) handleMessage(ctx context.Context, message
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
 	} else {
-		span.SetStatus(codes.Ok, "message sent")
+		span.SetStatus(codes.Ok, "message received")
 	}
 	return err
 }

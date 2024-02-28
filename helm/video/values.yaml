@@ -21,7 +21,7 @@ otlp:
   insecure: true
 
 datadog:
-  enabled: true
+  enabled: false
 
 hpa:
   enabled: false
@@ -48,7 +48,8 @@ background_services:
   - name: "encoder-data-broker-consumer"
     type: kafka-consumer
     config:
-      tracing_service_name: data-broker
+      peer_service: data-broker
+      peer_namespace: chaosmania
       brokers:
         - "" # TODO
       username: "" # TODO
@@ -100,7 +101,8 @@ background_services:
   - name: "upload-message-broker-consumer"
     type: rabbitmq-consumer
     config:
-      tracing_service_name: message-broker
+      peer_service: message-broker
+      peer_namespace: chaosmania
       url: "amqp://guest:guest@message-broker:5672/"
       queue: "upload-video-encoding"
       script: |
@@ -122,7 +124,8 @@ background_services:
   - name: "inventory-message-broker-consumer"
     type: rabbitmq-consumer
     config:
-      tracing_service_name: message-broker
+      peer_service: message-broker
+      peer_namespace: chaosmania
       url: "amqp://guest:guest@message-broker:5672/"
       queue: "inventory-video-encoding"
       script: |
@@ -146,13 +149,15 @@ services:
   - name: auth-cache
     type: redis
     config:
-      tracing_service_name: auth-cache
+      peer_service: auth-cache
+      peer_namespace: chaosmania
       address: "auth-cache:6379"
 
   - name: upload-db
     type: postgresql
     config:
-      tracing_service_name: upload-db
+      peer_service: upload-db
+      peer_namespace: chaosmania
       dbname: postgres
       host: upload-db
       maxidle: 10
@@ -164,7 +169,8 @@ services:
   - name: inventory-db
     type: postgresql
     config:
-      tracing_service_name: inventory-db
+      peer_service: inventory-db
+      peer_namespace: chaosmania
       dbname: postgres
       host: inventory-db
       maxidle: 10
@@ -176,7 +182,8 @@ services:
   - name: "data-broker-producer"
     type: kafka-producer
     config:
-      tracing_service_name: data-broker
+      peer_service: data-broker
+      peer_namespace: chaosmania
       brokers:
         - "" # TODO
       username: "" # TODO
@@ -187,13 +194,15 @@ services:
   - name: "message-broker-producer"
     type: rabbitmq-producer
     config:
-      tracing_service_name: message-broker
+      peer_service: message-broker
+      peer_namespace: chaosmania
       url: "amqp://guest:guest@message-broker:5672/"
 
   - name: "storage"
     type: "minio"
     config:
-      tracing_service_name: storage
+      peer_service: storage
+      peer_namespace: chaosmania
       endpoint: "storage:9000"
       accesskeyid: minioadmin
       secretaccesskey: minioadmin 

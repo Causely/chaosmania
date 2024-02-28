@@ -2,6 +2,11 @@ package actions
 
 import (
 	"context"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	semconv "go.opentelemetry.io/otel/semconv/v1.24.0"
+	oteltrace "go.opentelemetry.io/otel/trace"
 
 	"github.com/Causely/chaosmania/pkg"
 	"github.com/Causely/chaosmania/pkg/logger"
@@ -17,45 +22,46 @@ type RabbitMQConsumerService struct {
 }
 
 type RabbitMQConsumerServiceConfig struct {
-	URL                string `json:"url"`
-	Queue              string `json:"queue"`
-	Script             string `json:"script"`
-	TracingServiceName string `json:"tracing_service_name"`
+	URL           string `json:"url"`
+	Queue         string `json:"queue"`
+	Script        string `json:"script"`
+	PeerService   string `json:"peer_service"`
+	PeerNamespace string `json:"peer_namespace"`
 }
 
-func (s *RabbitMQConsumerService) Name() BackgroundServiceName {
-	return s.name
+func (consumer *RabbitMQConsumerService) Name() BackgroundServiceName {
+	return consumer.name
 }
 
-func (s *RabbitMQConsumerService) Type() BackgroundServiceType {
+func (consumer *RabbitMQConsumerService) Type() BackgroundServiceType {
 	return "rabbitmq-consumer"
 }
 
-func (s *RabbitMQConsumerService) getChannel() (*amqp.Channel, error) {
-	if s.conn != nil && s.conn.IsClosed() {
-		s.conn = nil
+func (consumer *RabbitMQConsumerService) getChannel() (*amqp.Channel, error) {
+	if consumer.conn != nil && consumer.conn.IsClosed() {
+		consumer.conn = nil
 	}
 
-	if s.conn == nil {
-		conn, err := amqp.Dial(s.config.URL)
+	if consumer.conn == nil {
+		conn, err := amqp.Dial(consumer.config.URL)
 		if err != nil {
 			return nil, err
 		}
 
-		s.conn = conn
+		consumer.conn = conn
 	}
 
-	return s.conn.Channel()
+	return consumer.conn.Channel()
 }
 
-func (s *RabbitMQConsumerService) Run(ctx context.Context) error {
+func (consumer *RabbitMQConsumerService) Run(ctx context.Context) error {
 	for {
 		select {
 		case <-ctx.Done():
 			return nil
 
 		default:
-			err := s.run(ctx)
+			err := consumer.run(ctx)
 			if err != nil {
 				logger.FromContext(ctx).Warn("failed to consume message", zap.Error(err))
 			}
@@ -63,8 +69,8 @@ func (s *RabbitMQConsumerService) Run(ctx context.Context) error {
 	}
 }
 
-func (s *RabbitMQConsumerService) run(ctx context.Context) error {
-	ch, err := s.getChannel()
+func (consumer *RabbitMQConsumerService) run(ctx context.Context) error {
+	ch, err := consumer.getChannel()
 	if err != nil {
 		logger.FromContext(ctx).Warn("failed to get channel", zap.Error(err))
 		return err
@@ -72,12 +78,12 @@ func (s *RabbitMQConsumerService) run(ctx context.Context) error {
 
 	// Declare a queue for receiving
 	q, err := ch.QueueDeclare(
-		s.config.Queue, // name
-		false,          // durable
-		false,          // delete when unused
-		false,          // exclusive
-		false,          // no-wait
-		nil,            // arguments
+		consumer.config.Queue, // name
+		false,                 // durable
+		false,                 // delete when unused
+		false,                 // exclusive
+		false,                 // no-wait
+		nil,                   // arguments
 	)
 
 	if err != nil {
@@ -101,13 +107,13 @@ func (s *RabbitMQConsumerService) run(ctx context.Context) error {
 	}
 
 	for msg := range deliveries {
-		s.handleMessage(ctx, msg)
+		consumer.handleMessage(ctx, msg)
 	}
 
 	return nil
 }
 
-func (s *RabbitMQConsumerService) handleMessage(ctx context.Context, msg amqp.Delivery) error {
+func (consumer *RabbitMQConsumerService) ddHandleMessage(ctx context.Context, msg amqp.Delivery) error {
 	span := tracer.StartSpan("handle_message",
 		tracer.ResourceName("handle_message"))
 	defer span.Finish()
@@ -115,9 +121,9 @@ func (s *RabbitMQConsumerService) handleMessage(ctx context.Context, msg amqp.De
 	// This span is just to show the relationship between the kafka consumer and the topic.
 	child := tracer.StartSpan("rabbitmq.consume",
 		tracer.ResourceName("Consume message"),
-		tracer.Tag("queue", s.config.Queue),             // Required tag
+		tracer.Tag("queue", consumer.config.Queue),      // Required tag
 		tracer.Tag("span.kind", "consumer"),             // Required tag
-		tracer.ServiceName(s.config.TracingServiceName), // Required tag
+		tracer.ServiceName(consumer.config.PeerService), // Required tag
 		tracer.ChildOf(span.Context()),
 	)
 	child.Finish()
@@ -129,7 +135,7 @@ func (s *RabbitMQConsumerService) handleMessage(ctx context.Context, msg amqp.De
 	}
 
 	cfg := ScriptConfig{
-		Script:  s.config.Script,
+		Script:  consumer.config.Script,
 		Message: string(msg.Body),
 	}
 
@@ -138,6 +144,43 @@ func (s *RabbitMQConsumerService) handleMessage(ctx context.Context, msg amqp.De
 		msg.Ack(false)
 		child.Finish(tracer.WithError(err))
 		return err
+	}
+
+	err = ACTIONS["Script"].Execute(ctx, c)
+	if err != nil {
+		logger.FromContext(ctx).Warn("failed to execute script", zap.Error(err))
+	}
+
+	return nil
+}
+
+func (consumer *RabbitMQConsumerService) handleMessage(ctx context.Context, msg amqp.Delivery) error {
+	if pkg.IsDatadogEnabled() {
+		return consumer.ddHandleMessage(ctx, msg)
+	}
+	consumeTracer := otel.GetTracerProvider().Tracer("rabbitmq-consumer")
+	ctx, span := consumeTracer.Start(ctx, "Consume Queue "+consumer.config.Queue, oteltrace.WithSpanKind(oteltrace.SpanKindConsumer))
+	defer span.End()
+	span.SetAttributes(semconv.MessagingDestinationName(consumer.config.Queue))
+	span.SetAttributes(semconv.MessagingSystemRabbitmq)
+
+	// https://opentelemetry.io/docs/specs/semconv/messaging/kafka/#:~:text=For%20Apache%20Kafka%20producers
+	span.SetAttributes(semconv.PeerService(consumer.config.PeerService))
+	span.SetAttributes(attribute.String("peer.namespace", consumer.config.PeerNamespace))
+
+	cfg := ScriptConfig{
+		Script:  consumer.config.Script,
+		Message: string(msg.Body),
+	}
+
+	c, err := pkg.ConfigToMap(&cfg)
+	if err != nil {
+		msg.Ack(false)
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+		return err
+	} else {
+		span.SetStatus(codes.Ok, "message received")
 	}
 
 	err = ACTIONS["Script"].Execute(ctx, c)
@@ -163,7 +206,7 @@ func NewRabbitMQConsumerService(name BackgroundServiceName, config map[string]an
 }
 
 func init() {
-	BACKGROUND_SERVICE_TPES["rabbitmq-consumer"] = func(name BackgroundServiceName, m map[string]any) BackgroundService {
+	BACKGROUND_SERVICE_TYPES["rabbitmq-consumer"] = func(name BackgroundServiceName, m map[string]any) BackgroundService {
 		s, err := NewRabbitMQConsumerService(name, m)
 		if err != nil {
 			panic(err)

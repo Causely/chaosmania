@@ -10,7 +10,7 @@ import (
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
 	"go.opentelemetry.io/otel/sdk/trace"
-	semconv "go.opentelemetry.io/otel/semconv/v1.12.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.24.0"
 	"go.uber.org/zap"
 )
 
@@ -20,9 +20,9 @@ func initOTLP(logger *zap.Logger) func() {
 	res, err := resource.New(ctx,
 		resource.WithAttributes(
 			// the service name used to display traces in backends
-			semconv.ServiceNameKey.String(os.Getenv("DEPLOYMENT_NAME")),
-			semconv.ServiceNamespaceKey.String(os.Getenv("NAMESPACE")),
-			semconv.DeploymentEnvironmentKey.String(os.Getenv("DOMAIN")),
+			semconv.ServiceName(os.Getenv("DEPLOYMENT_NAME")),
+			semconv.ServiceNamespace(os.Getenv("NAMESPACE")),
+			semconv.DeploymentEnvironment(os.Getenv("DOMAIN")),
 		),
 		resource.WithProcess(),
 	)

@@ -4,9 +4,9 @@ NS=chaosmania
 IMAGE_TAG=latest
 CHAOS_HOST=frontend
 
-python plans/make_video_plans.py upload create > ./plans/video_upload.yaml 
-python plans/make_video_plans.py show-recommendations create > ./plans/video_show_recommendations.yaml 
-python plans/make_video_plans.py show-video create > ./plans/video_show_video.yaml 
+#python plans/make_video_plans.py upload create > ./plans/video_upload.yaml
+#python plans/make_video_plans.py show-recommendations create > ./plans/video_show_recommendations.yaml
+#python plans/make_video_plans.py show-video create > ./plans/video_show_video.yaml
 
 helm delete --namespace ${NS} client-show-video
 helm delete --namespace ${NS} client-show-recommendations

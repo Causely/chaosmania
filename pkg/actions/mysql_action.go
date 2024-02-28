@@ -26,18 +26,19 @@ var MYDBQueryHistogram = promauto.NewHistogram(prometheus.HistogramOpts{
 type MysqlQuery struct{}
 
 type MysqlQueryConfig struct {
-	Query              string `json:"query"`
-	Repeat             int    `json:"repeat"`
-	Host               string `json:"host"`
-	Port               int    `json:"port"`
-	MaxOpen            int    `json:"maxopen"`
-	MaxIdle            int    `json:"maxidle"`
-	DBname             string `json:"dbname"`
-	User               string `json:"user"`
-	Password           string `json:"password"`
-	SSLMode            string `json:"sslmode"`
-	AppName            string `json:"appname"`
-	TracingServiceName string `json:"tracing_service_name"`
+	Query         string `json:"query"`
+	Repeat        int    `json:"repeat"`
+	Host          string `json:"host"`
+	Port          int    `json:"port"`
+	MaxOpen       int    `json:"maxopen"`
+	MaxIdle       int    `json:"maxidle"`
+	DBname        string `json:"dbname"`
+	User          string `json:"user"`
+	Password      string `json:"password"`
+	SSLMode       string `json:"sslmode"`
+	AppName       string `json:"appname"`
+	PeerService   string `json:"peer_service"`
+	PeerNamespace string `json:"peer_namespace"`
 }
 
 func openMysql(dsn string, host string, port int, dbname string) (*sql.DB, error) {
@@ -62,7 +63,7 @@ func openMysql(dsn string, host string, port int, dbname string) (*sql.DB, error
 	return sql.Open(driverName, dsn)
 }
 
-func (action *MysqlQuery) Execute(ctx context.Context, cfg map[string]any) error {
+func (mysql *MysqlQuery) Execute(ctx context.Context, cfg map[string]any) error {
 	config, err := pkg.ParseConfig[MysqlQueryConfig](cfg)
 	if err != nil {
 		logger.FromContext(ctx).Warn("failed to parse config", zap.Error(err))
@@ -175,7 +176,7 @@ func (action *MysqlQuery) Execute(ctx context.Context, cfg map[string]any) error
 	return nil
 }
 
-func (action *MysqlQuery) ParseConfig(data map[string]any) (any, error) {
+func (mysql *MysqlQuery) ParseConfig(data map[string]any) (any, error) {
 	return pkg.ParseConfig[MysqlQueryConfig](data)
 }
 

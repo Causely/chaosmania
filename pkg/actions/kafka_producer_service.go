@@ -9,8 +9,9 @@ import (
 	"github.com/Causely/chaosmania/pkg/logger"
 	"github.com/IBM/sarama"
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
-	semconv "go.opentelemetry.io/otel/semconv/v1.21.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.24.0"
 	oteltrace "go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 	saramatrace "gopkg.in/DataDog/dd-trace-go.v1/contrib/IBM/sarama.v1"
@@ -30,19 +31,20 @@ type KafkaProducerService struct {
 }
 
 type KafkaProducerServiceConfig struct {
-	Username           string   `json:"username"`
-	Password           string   `json:"password"`
-	TLSEnable          bool     `json:"tls_enable"`
-	SASLEnable         bool     `json:"sasl_enable"`
-	Brokers            []string `json:"brokers"`
-	TracingServiceName string   `json:"tracing_service_name"`
+	Username      string   `json:"username"`
+	Password      string   `json:"password"`
+	TLSEnable     bool     `json:"tls_enable"`
+	SASLEnable    bool     `json:"sasl_enable"`
+	PeerService   string   `json:"peer_service"`
+	PeerNamespace string   `json:"peer_namespace"`
+	Brokers       []string `json:"brokers"`
 }
 
-func (s *KafkaProducerService) Name() ServiceName {
-	return s.name
+func (producer *KafkaProducerService) Name() ServiceName {
+	return producer.name
 }
 
-func (s *KafkaProducerService) Type() ServiceType {
+func (producer *KafkaProducerService) Type() ServiceType {
 	return "kafka-producer"
 }
 
@@ -77,7 +79,7 @@ func getProducerMsgSize(msg *sarama.ProducerMessage) (size int64) {
 	return size
 }
 
-func (s *KafkaProducerService) ddProduce(ctx context.Context, topic string, msg string) error {
+func (producer *KafkaProducerService) ddProduce(ctx context.Context, topic string, msg string) error {
 	span, _ := tracer.SpanFromContext(ctx)
 
 	m := &sarama.ProducerMessage{Topic: topic, Value: sarama.StringEncoder(msg)}
@@ -91,7 +93,7 @@ func (s *KafkaProducerService) ddProduce(ctx context.Context, topic string, msg 
 
 	setProduceCheckpoint(m)
 
-	partition, offset, err := s.producer.SendMessage(m)
+	partition, offset, err := producer.producer.SendMessage(m)
 	if err != nil {
 		logger.FromContext(ctx).Warn("failed to send message", zap.Error(err))
 		//span.Finish(tracer.WithError(err))
@@ -103,9 +105,9 @@ func (s *KafkaProducerService) ddProduce(ctx context.Context, topic string, msg 
 	return nil
 }
 
-func (s *KafkaProducerService) Produce(ctx context.Context, topic string, msg string) error {
+func (producer *KafkaProducerService) Produce(ctx context.Context, topic string, msg string) error {
 	if pkg.IsDatadogEnabled() {
-		return s.ddProduce(ctx, topic, msg)
+		return producer.ddProduce(ctx, topic, msg)
 	}
 
 	prodTracer := otel.GetTracerProvider().Tracer("kafka-producer")
@@ -118,20 +120,22 @@ func (s *KafkaProducerService) Produce(ctx context.Context, topic string, msg st
 	span.SetAttributes(semconv.MessagingKafkaDestinationPartition(int(m.Partition)))
 	span.SetAttributes(semconv.MessagingKafkaMessageOffset(int(m.Offset)))
 	span.SetAttributes(semconv.MessagingDestinationName(topic))
-	span.SetAttributes(semconv.MessagingSystem("kafka"))
-	span.SetAttributes(semconv.ServiceName(s.config.TracingServiceName))
+	span.SetAttributes(semconv.MessagingSystemKafka)
 
 	// https://opentelemetry.io/docs/specs/semconv/messaging/kafka/#:~:text=For%20Apache%20Kafka%20producers
-	span.SetAttributes(semconv.PeerService(s.config.TracingServiceName))
+	span.SetAttributes(semconv.PeerService(producer.config.PeerService))
+	span.SetAttributes(attribute.String("peer.namespace", producer.config.PeerNamespace))
 
 	setProduceCheckpoint(m)
 
-	_, _, err := s.producer.SendMessage(m)
+	_, _, err := producer.producer.SendMessage(m)
 	if err != nil {
 		logger.FromContext(ctx).Warn("failed to send message", zap.Error(err))
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
 		return err
+	} else {
+		span.SetStatus(codes.Ok, "message sent")
 	}
 
 	return nil
@@ -174,7 +178,7 @@ func NewKafkaProducerService(name ServiceName, config map[string]any) (Service, 
 
 	producer = saramatrace.WrapSyncProducer(c,
 		producer,
-		saramatrace.WithServiceName(cfg.TracingServiceName))
+		saramatrace.WithServiceName(cfg.PeerService))
 
 	kafkaService.producer = producer
 
@@ -195,7 +199,7 @@ func setProduceCheckpoint(msg *sarama.ProducerMessage) {
 }
 
 func init() {
-	SERVICE_TPES["kafka-producer"] = func(name ServiceName, m map[string]any) Service {
+	SERVICE_TYPES["kafka-producer"] = func(name ServiceName, m map[string]any) Service {
 		s, err := NewKafkaProducerService(name, m)
 		if err != nil {
 			panic(err)

@@ -124,7 +124,7 @@ class WorkloadBuilder():
     def add_action(self, action: Action):
         self.actions.append(action)
 
-    def as_paylod(self) -> str:
+    def as_payload(self) -> str:
         return json.dumps(Workload(actions=self.actions).model_dump_json())
 
     def http_request(self, service: str, builder: 'WorkloadBuilder'):
@@ -228,9 +228,9 @@ def create():
     frontend = WorkloadBuilder()
     frontend.script(script=f'''function run() {{
         // Send a request for authentication
-        ctx.http_post(ctx.ctx, "http://auth:8080", {create_auth_check().as_paylod()});
+        ctx.http_post(ctx.ctx, "http://auth:8080", {create_auth_check().as_payload()});
 
-        ctx.http_post(ctx.ctx, "http://inventory:8080", {inventory.as_paylod()}); 
+        ctx.http_post(ctx.ctx, "http://inventory:8080", {inventory.as_payload()});
     }}''')
 
     phase = Phase(name='phase1', client=Client(workers=[Worker(
@@ -268,16 +268,16 @@ def create():
     recommendation = WorkloadBuilder()
     recommendation.script(script=f'''function run() {{
         // Send a request for authentication
-        ctx.http_post(ctx.ctx, "http://inventory:8080", {inventory.as_paylod()});
+        ctx.http_post(ctx.ctx, "http://inventory:8080", {inventory.as_payload()});
     }}''')
 
     # Frontend receives the video from the user
     frontend = WorkloadBuilder()
     frontend.script(script=f'''function run() {{
         // Send a request for authentication
-        ctx.http_post(ctx.ctx, "http://auth:8080", {auth.as_paylod()});
+        ctx.http_post(ctx.ctx, "http://auth:8080", {auth.as_payload()});
 
-        ctx.http_post(ctx.ctx, "http://recommendation:8080", {recommendation.as_paylod()}); 
+        ctx.http_post(ctx.ctx, "http://recommendation:8080", {recommendation.as_payload()});
     }}''')
 
     phase = Phase(name='phase1', client=Client(workers=[Worker(
@@ -337,11 +337,11 @@ def create(
         ctx.burn("100ms")
 
         // Send a request for authentication
-        ctx.http_post(ctx.ctx, "http://auth:8080", {auth.as_paylod()});
+        ctx.http_post(ctx.ctx, "http://auth:8080", {auth.as_payload()});
 
-        // TODO: Send custom paylod
+        // TODO: Send custom payload
         // Send a request to upload the video
-        ctx.http_post(ctx.ctx, "http://upload:8080", {upload.as_paylod()}); 
+        ctx.http_post(ctx.ctx, "http://upload:8080", {upload.as_payload()});
     }}''')
 
     phase = Phase(name='phase1', client=Client(workers=[Worker(

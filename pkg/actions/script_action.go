@@ -24,7 +24,7 @@ type ScriptContext struct {
 	Message string
 }
 
-func (s *ScriptContext) Print(message string) error {
+func (sc *ScriptContext) Print(message string) error {
 	cfg := PrintConfig{
 		Message: message,
 	}
@@ -34,14 +34,14 @@ func (s *ScriptContext) Print(message string) error {
 		return err
 	}
 
-	return ACTIONS["Print"].Execute(s.Ctx, c)
+	return ACTIONS["Print"].Execute(sc.Ctx, c)
 }
 
-func (s *ScriptContext) Get_message() string {
-	return s.Message
+func (sc *ScriptContext) Get_message() string {
+	return sc.Message
 }
 
-func (s *ScriptContext) Allocate_memory(size_bytes int, num_allocations int) error {
+func (sc *ScriptContext) Allocate_memory(size_bytes int, num_allocations int) error {
 	cfg := AllocateMemoryConfig{
 		SizeBytes:      size_bytes,
 		NumAllocations: num_allocations,
@@ -52,10 +52,10 @@ func (s *ScriptContext) Allocate_memory(size_bytes int, num_allocations int) err
 		return err
 	}
 
-	return ACTIONS["AllocateMemory"].Execute(s.Ctx, c)
+	return ACTIONS["AllocateMemory"].Execute(sc.Ctx, c)
 }
 
-func (s *ScriptContext) Get_service(name string) (Service, error) {
+func (sc *ScriptContext) Get_service(name string) (Service, error) {
 	service, err := Manager.Get(ServiceName(name))
 	if err != nil {
 		return nil, err
@@ -64,11 +64,11 @@ func (s *ScriptContext) Get_service(name string) (Service, error) {
 	return service, nil
 }
 
-func (s *ScriptContext) Uuid() string {
+func (sc *ScriptContext) Uuid() string {
 	return uuid.New().String()
 }
 
-func (s *ScriptContext) Random_string(n int64) string {
+func (sc *ScriptContext) Random_string(n int64) string {
 	const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 	b := make([]byte, n)
@@ -78,7 +78,7 @@ func (s *ScriptContext) Random_string(n int64) string {
 	return string(b)
 }
 
-func (s *ScriptContext) Sleep(duration string) error {
+func (sc *ScriptContext) Sleep(duration string) error {
 	cfg := SleepConfig{}
 
 	d, err := time.ParseDuration(duration)
@@ -93,10 +93,10 @@ func (s *ScriptContext) Sleep(duration string) error {
 		return err
 	}
 
-	return ACTIONS["Sleep"].Execute(s.Ctx, c)
+	return ACTIONS["Sleep"].Execute(sc.Ctx, c)
 }
 
-func (s *ScriptContext) Http_post(ctx context.Context, url string, body string) error {
+func (sc *ScriptContext) Http_post(ctx context.Context, url string, body string) error {
 	b := make(map[string]any)
 
 	err := json.Unmarshal([]byte(body), &b)
@@ -114,10 +114,10 @@ func (s *ScriptContext) Http_post(ctx context.Context, url string, body string) 
 		return err
 	}
 
-	return ACTIONS["HTTPRequest"].Execute(s.Ctx, c)
+	return ACTIONS["HTTPRequest"].Execute(sc.Ctx, c)
 }
 
-func (s *ScriptContext) Burn(duration string) error {
+func (sc *ScriptContext) Burn(duration string) error {
 	cfg := BurnConfig{}
 
 	d, err := time.ParseDuration(duration)
@@ -132,10 +132,36 @@ func (s *ScriptContext) Burn(duration string) error {
 		return err
 	}
 
-	return ACTIONS["Burn"].Execute(s.Ctx, c)
+	return ACTIONS["Burn"].Execute(sc.Ctx, c)
 }
 
-func (a *Script) Execute(ctx context.Context, cfg map[string]any) error {
+func (sc *ScriptContext) Lock(id string) error {
+
+	cfg := GlobalMutexLockConfig{
+		Id: id,
+	}
+	c, err := pkg.ConfigToMap(&cfg)
+	if err != nil {
+		return err
+	}
+
+	return ACTIONS["GlobalMutexLock"].Execute(sc.Ctx, c)
+}
+
+func (sc *ScriptContext) UnLock(id string) error {
+
+	cfg := GlobalMutexLockConfig{
+		Id: id,
+	}
+	c, err := pkg.ConfigToMap(&cfg)
+	if err != nil {
+		return err
+	}
+
+	return ACTIONS["GlobalMutexUnlock"].Execute(sc.Ctx, c)
+}
+
+func (s *Script) Execute(ctx context.Context, cfg map[string]any) error {
 	config, err := pkg.ParseConfig[ScriptConfig](cfg)
 	if err != nil {
 		return err
@@ -164,7 +190,7 @@ func (a *Script) Execute(ctx context.Context, cfg map[string]any) error {
 	return err
 }
 
-func (a *Script) ParseConfig(data map[string]any) (any, error) {
+func (s *Script) ParseConfig(data map[string]any) (any, error) {
 	return pkg.ParseConfig[ScriptConfig](data)
 }
 

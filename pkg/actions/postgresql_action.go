@@ -27,18 +27,19 @@ var PQDBQueryHistogram = promauto.NewHistogram(prometheus.HistogramOpts{
 type PostgresqlQuery struct{}
 
 type PostgresqlQueryConfig struct {
-	Query              string `json:"query"`
-	Repeat             int    `json:"repeat"`
-	Host               string `json:"host"`
-	Port               int    `json:"port"`
-	MaxOpen            int    `json:"maxopen"`
-	MaxIdle            int    `json:"maxidle"`
-	DBname             string `json:"dbname"`
-	User               string `json:"user"`
-	Password           string `json:"password"`
-	SSLMode            string `json:"sslmode"`
-	AppName            string `json:"appname"`
-	TracingServiceName string `json:"tracing_service_name"`
+	Query         string `json:"query"`
+	Repeat        int    `json:"repeat"`
+	Host          string `json:"host"`
+	Port          int    `json:"port"`
+	MaxOpen       int    `json:"maxopen"`
+	MaxIdle       int    `json:"maxidle"`
+	DBname        string `json:"dbname"`
+	User          string `json:"user"`
+	Password      string `json:"password"`
+	SSLMode       string `json:"sslmode"`
+	AppName       string `json:"appname"`
+	PeerService   string `json:"peer_service"`
+	PeerNamespace string `json:"peer_namespace"`
 }
 
 func openPostgres(dsn string, host string, port int, dbname string) (*sql.DB, error) {
@@ -63,7 +64,7 @@ func openPostgres(dsn string, host string, port int, dbname string) (*sql.DB, er
 	return sql.Open(driverName, dsn)
 }
 
-func (a *PostgresqlQuery) Execute(ctx context.Context, cfg map[string]any) error {
+func (postgres *PostgresqlQuery) Execute(ctx context.Context, cfg map[string]any) error {
 	config, err := pkg.ParseConfig[PostgresqlQueryConfig](cfg)
 	if err != nil {
 		logger.FromContext(ctx).Warn("failed to parse config", zap.Error(err))
@@ -115,7 +116,7 @@ func (a *PostgresqlQuery) Execute(ctx context.Context, cfg map[string]any) error
 
 	var db *sql.DB
 	if pkg.IsDatadogEnabled() {
-		db, err = sqltrace.Open("postgres", connStr, sqltrace.WithServiceName(config.TracingServiceName))
+		db, err = sqltrace.Open("postgres", connStr, sqltrace.WithServiceName(config.PeerService))
 	} else {
 		db, err = openPostgres(connStr, host, port, dbname)
 	}
@@ -171,7 +172,7 @@ func (a *PostgresqlQuery) Execute(ctx context.Context, cfg map[string]any) error
 	return nil
 }
 
-func (action *PostgresqlQuery) ParseConfig(data map[string]any) (any, error) {
+func (postgres *PostgresqlQuery) ParseConfig(data map[string]any) (any, error) {
 	return pkg.ParseConfig[PostgresqlQueryConfig](data)
 }
 

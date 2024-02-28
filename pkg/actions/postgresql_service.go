@@ -18,28 +18,29 @@ type PostgresqlService struct {
 }
 
 type PostgresqlServiceConfig struct {
-	Host               string `json:"host"`
-	Port               int    `json:"port"`
-	MaxOpen            int    `json:"maxopen"`
-	MaxIdle            int    `json:"maxidle"`
-	DBname             string `json:"dbname"`
-	User               string `json:"user"`
-	Password           string `json:"password"`
-	SSLMode            string `json:"sslmode"`
-	AppName            string `json:"appname"`
-	TracingServiceName string `json:"tracing_service_name"`
+	Host          string `json:"host"`
+	Port          int    `json:"port"`
+	MaxOpen       int    `json:"maxopen"`
+	MaxIdle       int    `json:"maxidle"`
+	DBname        string `json:"dbname"`
+	User          string `json:"user"`
+	Password      string `json:"password"`
+	SSLMode       string `json:"sslmode"`
+	AppName       string `json:"appname"`
+	PeerService   string `json:"peer_service"`
+	PeerNamespace string `json:"peer_namespace"`
 }
 
-func (s *PostgresqlService) Name() ServiceName {
-	return s.name
+func (postgres *PostgresqlService) Name() ServiceName {
+	return postgres.name
 }
 
-func (s *PostgresqlService) Type() ServiceType {
+func (postgres *PostgresqlService) Type() ServiceType {
 	return "postgresql"
 }
 
-func (s *PostgresqlService) Query(ctx context.Context, query string) ([]map[string]any, error) {
-	rows, err := s.db.QueryContext(ctx, query)
+func (postgres *PostgresqlService) Query(ctx context.Context, query string) ([]map[string]any, error) {
+	rows, err := postgres.db.QueryContext(ctx, query)
 	if err != nil {
 		logger.FromContext(ctx).Warn("failed to execute query", zap.Error(err))
 		return nil, err
@@ -131,7 +132,7 @@ func NewPostgresqlService(name ServiceName, config map[string]any) (Service, err
 
 	var db *sql.DB
 	if pkg.IsDatadogEnabled() {
-		db, err = sqltrace.Open("postgres", connStr, sqltrace.WithServiceName(cfg.TracingServiceName))
+		db, err = sqltrace.Open("postgres", connStr, sqltrace.WithServiceName(cfg.PeerService))
 	} else {
 		db, err = openPostgres(connStr, host, port, dbname)
 	}
@@ -148,7 +149,7 @@ func NewPostgresqlService(name ServiceName, config map[string]any) (Service, err
 }
 
 func init() {
-	SERVICE_TPES["postgresql"] = func(name ServiceName, m map[string]any) Service {
+	SERVICE_TYPES["postgresql"] = func(name ServiceName, m map[string]any) Service {
 		s, err := NewPostgresqlService(name, m)
 		if err != nil {
 			panic(err)

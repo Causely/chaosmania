@@ -1,4 +1,6 @@
 {{- define "common.env" }}
+- name: DOMAIN
+  value: {{ .Chart.Name }}
 - name: HOST_IP
   valueFrom:
     fieldRef:
@@ -10,7 +12,7 @@
 - name: DEPLOYMENT_NAME
   valueFrom:
     fieldRef:
-      fieldPath: metadata.labels['app']
+      fieldPath: metadata.labels['app.kubernetes.io/name']
 {{ end -}}
 
 {{- define "common.labels" }}
@@ -60,6 +62,10 @@ scrape-prometheus: "true"
 {{- if .Values.otlp.enabled }}
 - name: OTEL_ENABLED
   value: "true"
+- name: OTEL_SERVICE_NAME
+  valueFrom:
+    fieldRef:
+      fieldPath: metadata.labels['app.kubernetes.io/name']
 {{- if .Values.otlp.endpoint }}
 - name: OTEL_EXPORTER_OTLP_ENDPOINT
   value: {{ .Values.otlp.endpoint }}

@@ -50,8 +50,8 @@ type Plan struct {
 	Phases []Phase `json:"phases"`
 }
 
-func (p *Plan) Verify() error {
-	for _, phase := range p.Phases {
+func (plan *Plan) Verify() error {
+	for _, phase := range plan.Phases {
 		err := phase.Verify()
 		if err != nil {
 			return err
@@ -61,8 +61,8 @@ func (p *Plan) Verify() error {
 	return nil
 }
 
-func (p *Workload) Verify() error {
-	for _, action := range p.Actions {
+func (workload *Workload) Verify() error {
+	for _, action := range workload.Actions {
 		a := ACTIONS[action.Name]
 		if a == nil {
 			return eris.New(fmt.Sprintf("Unknown action: %v", action.Name))
@@ -77,18 +77,18 @@ func (p *Workload) Verify() error {
 	return nil
 }
 
-func (p *Phase) Verify() error {
-	err := p.Setup.Verify()
+func (phase *Phase) Verify() error {
+	err := phase.Setup.Verify()
 	if err != nil {
 		return err
 	}
 
-	err = p.Workload.Verify()
+	err = phase.Workload.Verify()
 	if err != nil {
 		return err
 	}
 
-	err = p.Teardown.Verify()
+	err = phase.Teardown.Verify()
 	if err != nil {
 		return err
 	}
@@ -96,8 +96,8 @@ func (p *Phase) Verify() error {
 	return nil
 }
 
-func (p *Workload) Execute(ctx context.Context) error {
-	for _, action := range p.Actions {
+func (workload *Workload) Execute(ctx context.Context) error {
+	for _, action := range workload.Actions {
 		a := ACTIONS[action.Name]
 		_, err := a.ParseConfig(action.Config)
 		if err != nil {

@@ -2,6 +2,10 @@ package actions
 
 import (
 	"context"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	semconv "go.opentelemetry.io/otel/semconv/v1.24.0"
+	oteltrace "go.opentelemetry.io/otel/trace"
 
 	"github.com/Causely/chaosmania/pkg"
 	"github.com/Causely/chaosmania/pkg/logger"
@@ -18,54 +22,55 @@ type RabbitMQProducerService struct {
 }
 
 type RabbitMQProducerServiceConfig struct {
-	URL                string `json:"url"`
-	TracingServiceName string `json:"tracing_service_name"`
+	URL           string `json:"url"`
+	PeerService   string `json:"peer_service"`
+	PeerNamespace string `json:"peer_namespace"`
 }
 
-func (s *RabbitMQProducerService) Name() ServiceName {
-	return s.name
+func (producer *RabbitMQProducerService) Name() ServiceName {
+	return producer.name
 }
 
-func (s *RabbitMQProducerService) Type() ServiceType {
+func (producer *RabbitMQProducerService) Type() ServiceType {
 	return "rabbitmq-producer"
 }
 
-func (s *RabbitMQProducerService) getChannel() (*amqp.Channel, error) {
-	if s.conn != nil && s.conn.IsClosed() {
-		s.conn = nil
-		s.channel = nil
+func (producer *RabbitMQProducerService) getChannel() (*amqp.Channel, error) {
+	if producer.conn != nil && producer.conn.IsClosed() {
+		producer.conn = nil
+		producer.channel = nil
 	}
 
-	if s.conn == nil {
-		conn, err := amqp.Dial(s.config.URL)
+	if producer.conn == nil {
+		conn, err := amqp.Dial(producer.config.URL)
 		if err != nil {
 			return nil, err
 		}
 
-		s.conn = conn
+		producer.conn = conn
 		channel, err := conn.Channel()
 		if err != nil {
 			return nil, err
 		}
 
-		s.channel = channel
+		producer.channel = channel
 	}
 
-	return s.channel, nil
+	return producer.channel, nil
 }
 
-func (s *RabbitMQProducerService) Close() error {
-	if s.conn != nil {
-		return s.conn.Close()
+func (producer *RabbitMQProducerService) Close() error {
+	if producer.conn != nil {
+		return producer.conn.Close()
 	}
 
-	s.conn = nil
-	s.channel = nil
+	producer.conn = nil
+	producer.channel = nil
 	return nil
 }
 
-func (s *RabbitMQProducerService) Produce(ctx context.Context, queue string, msg string) error {
-	ch, err := s.getChannel()
+func (producer *RabbitMQProducerService) ddProduce(ctx context.Context, queue string, msg string) error {
+	ch, err := producer.getChannel()
 	if err != nil {
 		logger.FromContext(ctx).Warn("failed to get channel", zap.Error(err))
 		return err
@@ -84,7 +89,7 @@ func (s *RabbitMQProducerService) Produce(ctx context.Context, queue string, msg
 	if err != nil {
 		logger.FromContext(ctx).Warn("failed to declare queue", zap.Error(err))
 
-		if err := s.Close(); err != nil {
+		if err := producer.Close(); err != nil {
 			logger.FromContext(ctx).Warn("failed to close connection", zap.Error(err))
 		}
 
@@ -100,11 +105,65 @@ func (s *RabbitMQProducerService) Produce(ctx context.Context, queue string, msg
 		tracer.ResourceName("Produce message"),
 		tracer.Tag("queue", queue),
 		tracer.Tag("span.kind", "producer"),
-		tracer.ServiceName(s.config.TracingServiceName),
+		tracer.ServiceName(producer.config.PeerService),
 		tracer.ChildOf(span.Context()),
 	)
-
 	defer child.Finish()
+
+	// Send a message
+	return ch.Publish(
+		"",     // exchange
+		q.Name, // routing key
+		false,  // mandatory
+		false,  // immediate
+		amqp.Publishing{
+			ContentType: "text/plain",
+			Body:        []byte(msg),
+		},
+	)
+}
+
+func (producer *RabbitMQProducerService) Produce(ctx context.Context, queue string, msg string) error {
+	if pkg.IsDatadogEnabled() {
+		return producer.ddProduce(ctx, queue, msg)
+	}
+	ch, err := producer.getChannel()
+	if err != nil {
+		logger.FromContext(ctx).Warn("failed to get channel", zap.Error(err))
+		return err
+	}
+
+	// Declare a queue for sending
+	q, err := ch.QueueDeclare(
+		queue, // name
+		false, // durable
+		false, // delete when unused
+		false, // exclusive
+		false, // no-wait
+		nil,   // arguments
+	)
+
+	if err != nil {
+		logger.FromContext(ctx).Warn("failed to declare queue", zap.Error(err))
+
+		if err := producer.Close(); err != nil {
+			logger.FromContext(ctx).Warn("failed to close connection", zap.Error(err))
+		}
+
+		return err
+	}
+
+	prodTracer := otel.GetTracerProvider().Tracer("kafka-producer")
+
+	ctx, span := prodTracer.Start(ctx, "Produce Message", oteltrace.WithSpanKind(oteltrace.SpanKindProducer))
+	defer span.End()
+
+	span.SetAttributes(semconv.MessagingDestinationName(queue))
+	span.SetAttributes(semconv.MessagingSystemRabbitmq)
+
+	// https://opentelemetry.io/docs/specs/semconv/messaging/kafka/#:~:text=For%20Apache%20Kafka%20producers
+	span.SetAttributes(semconv.PeerService(producer.config.PeerService))
+	span.SetAttributes(attribute.String("peer.namespace", producer.config.PeerNamespace))
 
 	// Send a message
 	return ch.Publish(
@@ -134,7 +193,7 @@ func NewRabbitMQProducerService(name ServiceName, config map[string]any) (Servic
 }
 
 func init() {
-	SERVICE_TPES["rabbitmq-producer"] = func(name ServiceName, m map[string]any) Service {
+	SERVICE_TYPES["rabbitmq-producer"] = func(name ServiceName, m map[string]any) Service {
 		s, err := NewRabbitMQProducerService(name, m)
 		if err != nil {
 			panic(err)

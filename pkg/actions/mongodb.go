@@ -43,7 +43,8 @@ type MongoDBConnection struct {
 	ConnectingTimeoutMs *time.Duration         `json:"connecting_timeout_ms;default:nil"`
 	UseClientOptsOnly   bool                   `json:"use_client_opts_only;default:false"`
 	ClientOptions       *options.ClientOptions `json:"client_options:default:nil"`
-	TracingServiceName  string                 `json:"tracing_service_name"`
+	PeerService         string                 `json:"peer_service"`
+	PeerNamespace       string                 `json:"peer_namespace"`
 }
 
 type MongoDbQueryConfig struct {
@@ -157,26 +158,26 @@ func buildClientOpts(ctx context.Context, config MongoDbQueryConfig) *options.Cl
 	return clientOpts
 }
 
-func (a *MongoDBQuery) Execute(ctx context.Context, cfg map[string]any) error {
+func (mongodb *MongoDBQuery) Execute(ctx context.Context, cfg map[string]any) error {
 	config, err := pkg.ParseConfig[MongoDbQueryConfig](cfg)
 	if err != nil {
 		logger.FromContext(ctx).Warn("failed to parse config", zap.Error(err))
 		return err
 	}
-	a.config = config
+	mongodb.config = config
 
-	a.clientOpts = buildClientOpts(ctx, *config)
+	mongodb.clientOpts = buildClientOpts(ctx, *config)
 
-	a.clientOpts.Monitor = otelmongo.NewMonitor()
+	mongodb.clientOpts.Monitor = otelmongo.NewMonitor()
 
 	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
 	defer cancel()
 	for {
-		client, err := mongo.Connect(ctx, a.clientOpts)
+		client, err := mongo.Connect(ctx, mongodb.clientOpts)
 		if err != nil {
 			logger.FromContext(ctx).Error("failed to connect to mongodb", zap.Error(err))
 		}
-		a.mongoClient = client
+		mongodb.mongoClient = client
 		break
 	}
 
@@ -185,7 +186,7 @@ func (a *MongoDBQuery) Execute(ctx context.Context, cfg map[string]any) error {
 		dbname = config.DBname
 	}
 
-	db := a.mongoClient.Database(dbname)
+	db := mongodb.mongoClient.Database(dbname)
 
 	defer func(client *mongo.Client, ctx context.Context) {
 		err := client.Disconnect(ctx)
@@ -262,7 +263,7 @@ func (a *MongoDBQuery) Execute(ctx context.Context, cfg map[string]any) error {
 	return err
 }
 
-func (a *MongoDBQuery) ParseConfig(data map[string]any) (any, error) {
+func (mongodb *MongoDBQuery) ParseConfig(data map[string]any) (any, error) {
 	return pkg.ParseConfig[MongoDbQueryConfig](data)
 }
 

@@ -18,13 +18,14 @@ import (
 type RedisCommand struct{}
 
 type RedisCommandConfig struct {
-	Address            string `json:"address"`
-	Command            string `json:"command"`
-	Args               []any  `json:"args"`
-	TracingServiceName string `json:"tracing_service_name"`
+	Address       string `json:"address"`
+	Command       string `json:"command"`
+	Args          []any  `json:"args"`
+	PeerService   string `json:"peer_service"`
+	PeerNamespace string `json:"peer_namespace"`
 }
 
-func (a *RedisCommand) Execute(ctx context.Context, cfg map[string]any) error {
+func (redis *RedisCommand) Execute(ctx context.Context, cfg map[string]any) error {
 	config, err := pkg.ParseConfig[RedisCommandConfig](cfg)
 	if err != nil {
 		logger.FromContext(ctx).Warn("failed to parse config", zap.Error(err))
@@ -33,7 +34,7 @@ func (a *RedisCommand) Execute(ctx context.Context, cfg map[string]any) error {
 
 	if pkg.IsDatadogEnabled() {
 		opts := &redis8.Options{Addr: config.Address, DB: 0}
-		rdb := redistrace.NewClient(opts, redistrace.WithServiceName(config.TracingServiceName))
+		rdb := redistrace.NewClient(opts, redistrace.WithServiceName(config.PeerService))
 
 		switch strings.ToLower(config.Command) {
 		case "lpop":
@@ -94,7 +95,7 @@ func (a *RedisCommand) Execute(ctx context.Context, cfg map[string]any) error {
 	return nil
 }
 
-func (a *RedisCommand) ParseConfig(data map[string]any) (any, error) {
+func (redis *RedisCommand) ParseConfig(data map[string]any) (any, error) {
 	return pkg.ParseConfig[RedisCommandConfig](data)
 }
 

@@ -25,7 +25,7 @@ phases:
               auth_cache.get(ctx.ctx, key);
             }}}]});
   
-            // TODO: Send custom paylod
+            // TODO: Send custom payload
             // Send a request to upload the video
             ctx.http_post(ctx.ctx, "http://upload:8080", {actions:[{name:Script,config:{script:function run() {
               ctx.allocate_memory(1024000, 1);

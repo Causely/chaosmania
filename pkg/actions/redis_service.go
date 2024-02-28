@@ -18,15 +18,16 @@ type RedisService struct {
 }
 
 type RedisServiceConfig struct {
-	Address            string `json:"address"`
-	TracingServiceName string `json:"tracing_service_name"`
+	Address       string `json:"address"`
+	PeerService   string `json:"peer_service"`
+	PeerNamespace string `json:"peer_namespace"`
 }
 
-func (s *RedisService) Name() ServiceName {
-	return s.name
+func (redis *RedisService) Name() ServiceName {
+	return redis.name
 }
 
-func (s *RedisService) Type() ServiceType {
+func (redis *RedisService) Type() ServiceType {
 	return "redis"
 }
 
@@ -43,7 +44,7 @@ func NewRedisService(name ServiceName, config map[string]any) (Service, error) {
 
 	if pkg.IsDatadogEnabled() {
 		opts := &redis8.Options{Addr: cfg.Address, DB: 0}
-		rdb := redistrace.NewClient(opts, redistrace.WithServiceName(cfg.TracingServiceName))
+		rdb := redistrace.NewClient(opts, redistrace.WithServiceName(cfg.PeerService))
 
 		if err != nil && err != redis8.Nil {
 			return nil, err
@@ -79,25 +80,25 @@ func NewRedisService(name ServiceName, config map[string]any) (Service, error) {
 }
 
 // Redis Set
-func (s *RedisService) Set(ctx context.Context, key string, value string) error {
-	if s.rdb8 != nil {
-		return s.rdb8.Set(ctx, key, value, 0).Err()
+func (redis *RedisService) Set(ctx context.Context, key string, value string) error {
+	if redis.rdb8 != nil {
+		return redis.rdb8.Set(ctx, key, value, 0).Err()
 	}
 
-	return s.rdb9.Set(ctx, key, value, 0).Err()
+	return redis.rdb9.Set(ctx, key, value, 0).Err()
 }
 
 // Redis Get
-func (s *RedisService) Get(ctx context.Context, key string) (string, error) {
-	if s.rdb8 != nil {
-		return s.rdb8.Get(ctx, key).Result()
+func (redis *RedisService) Get(ctx context.Context, key string) (string, error) {
+	if redis.rdb8 != nil {
+		return redis.rdb8.Get(ctx, key).Result()
 	}
 
-	return s.rdb9.Get(ctx, key).Result()
+	return redis.rdb9.Get(ctx, key).Result()
 }
 
 func init() {
-	SERVICE_TPES["redis"] = func(name ServiceName, m map[string]any) Service {
+	SERVICE_TYPES["redis"] = func(name ServiceName, m map[string]any) Service {
 		s, err := NewRedisService(name, m)
 		if err != nil {
 			panic(err)

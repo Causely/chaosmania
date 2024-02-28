@@ -21,28 +21,29 @@ type MysqlService struct {
 }
 
 type MysqlServiceConfig struct {
-	Host               string `json:"host"`
-	Port               int    `json:"port"`
-	MaxOpen            int    `json:"maxopen"`
-	MaxIdle            int    `json:"maxidle"`
-	DBname             string `json:"dbname"`
-	User               string `json:"user"`
-	Password           string `json:"password"`
-	SSLMode            string `json:"sslmode"`
-	AppName            string `json:"appname"`
-	TracingServiceName string `json:"tracing_service_name"`
+	Host          string `json:"host"`
+	Port          int    `json:"port"`
+	MaxOpen       int    `json:"maxopen"`
+	MaxIdle       int    `json:"maxidle"`
+	DBname        string `json:"dbname"`
+	User          string `json:"user"`
+	Password      string `json:"password"`
+	SSLMode       string `json:"sslmode"`
+	AppName       string `json:"appname"`
+	PeerService   string `json:"peer_service"`
+	PeerNamespace string `json:"peer_namespace"`
 }
 
-func (s *MysqlService) Name() ServiceName {
-	return s.name
+func (mysql *MysqlService) Name() ServiceName {
+	return mysql.name
 }
 
-func (s *MysqlService) Type() ServiceType {
+func (mysql *MysqlService) Type() ServiceType {
 	return "mysql"
 }
 
-func (s *MysqlService) Query(ctx context.Context, query string) ([]map[string]any, error) {
-	rows, err := s.db.QueryContext(ctx, query)
+func (mysql *MysqlService) Query(ctx context.Context, query string) ([]map[string]any, error) {
+	rows, err := mysql.db.QueryContext(ctx, query)
 	if err != nil {
 		logger.FromContext(ctx).Warn("failed to execute query", zap.Error(err))
 		return nil, err
@@ -142,12 +143,12 @@ func NewMysqlService(name ServiceName, config map[string]any) (Service, error) {
 	return &mysqlService, nil
 }
 
-func (a *MysqlService) ParseConfig(data map[string]any) (any, error) {
+func (mysql *MysqlService) ParseConfig(data map[string]any) (any, error) {
 	return pkg.ParseConfig[MysqlServiceConfig](data)
 }
 
 func init() {
-	SERVICE_TPES["mysql"] = func(name ServiceName, m map[string]any) Service {
+	SERVICE_TYPES["mysql"] = func(name ServiceName, m map[string]any) Service {
 		s, err := NewMysqlService(name, m)
 		if err != nil {
 			panic(err)

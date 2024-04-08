@@ -24,6 +24,7 @@ func initOTLP(logger *zap.Logger) func() {
 			semconv.ServiceNamespace(os.Getenv("NAMESPACE")),
 			semconv.DeploymentEnvironment(os.Getenv("DOMAIN")),
 		),
+		resource.WithContainerID(),
 		resource.WithProcess(),
 	)
 

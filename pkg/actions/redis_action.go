@@ -10,7 +10,7 @@ import (
 	redis8 "github.com/go-redis/redis/v8"
 	"github.com/redis/go-redis/extra/redisotel/v9"
 	redis9 "github.com/redis/go-redis/v9"
-	semconv "go.opentelemetry.io/otel/semconv/v1.21.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.24.0"
 	"go.uber.org/zap"
 	redistrace "gopkg.in/DataDog/dd-trace-go.v1/contrib/go-redis/redis.v8"
 )
@@ -66,8 +66,8 @@ func (redis *RedisCommand) Execute(ctx context.Context, cfg map[string]any) erro
 		}
 		err = redisotel.InstrumentTracing(rdb,
 			redisotel.WithAttributes(
-				semconv.NetPeerName("redis"),
-				semconv.NetPeerPort(6379),
+				semconv.ServerAddress("redis"),
+				semconv.ServerPort(6379),
 			))
 		if err != nil {
 			logger.FromContext(ctx).Error("failed to enable redis opentelemetry tracing", zap.Error(err))

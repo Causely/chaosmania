@@ -3,6 +3,7 @@ package actions
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"database/sql"
@@ -14,7 +15,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"go.nhat.io/otelsql"
-	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.24.0"
 	"go.uber.org/zap"
 	sqltrace "gopkg.in/DataDog/dd-trace-go.v1/contrib/database/sql"
 )
@@ -23,6 +24,9 @@ var PQDBQueryHistogram = promauto.NewHistogram(prometheus.HistogramOpts{
 	Name: "postgres_queries",
 	Help: "The number of Postgres SQL queries",
 })
+
+var pgDbRegisterOnce sync.Once
+var pgDriverName string
 
 type PostgresqlQuery struct{}
 
@@ -43,25 +47,32 @@ type PostgresqlQueryConfig struct {
 }
 
 func openPostgres(dsn string, host string, port int, dbname string) (*sql.DB, error) {
-	// Register the otelsql wrapper for the provided postgres driver.
-	driverName, err := otelsql.Register("postgres",
-		otelsql.AllowRoot(),
-		otelsql.TraceQueryWithoutArgs(),
-		otelsql.TraceRowsClose(),
-		otelsql.TraceRowsAffected(),
-		otelsql.WithDatabaseName(dbname),               // Optional.
-		otelsql.WithSystem(semconv.DBSystemPostgreSQL), // Optional.
-		otelsql.WithDefaultAttributes(
-			semconv.NetPeerName(host),
-			semconv.NetPeerPort(port),
-		),
-	)
-	if err != nil {
+	var dn string
+	var err error
+	pgDbRegisterOnce.Do(func() {
+		// Register the otelsql wrapper for the provided postgres driver.
+		dn, err = otelsql.Register("postgres",
+			otelsql.AllowRoot(),
+			otelsql.TraceQueryWithoutArgs(),
+			otelsql.TraceRowsClose(),
+			otelsql.TraceRowsAffected(),
+			otelsql.WithDatabaseName(dbname),               // Optional.
+			otelsql.WithSystem(semconv.DBSystemPostgreSQL), // Optional.
+			otelsql.WithDefaultAttributes(
+				semconv.ServerAddress(host),
+				semconv.ServerPort(port),
+			),
+		)
+		if err == nil {
+			pgDriverName = dn
+		}
+	})
+	if pgDriverName == "" || err != nil {
 		return nil, err
 	}
 
 	// Connect to a Postgres database using the postgres driver wrapper.
-	return sql.Open(driverName, dsn)
+	return sql.Open(pgDriverName, dsn)
 }
 
 func (postgres *PostgresqlQuery) Execute(ctx context.Context, cfg map[string]any) error {

@@ -22,15 +22,15 @@ helm upgrade --install --create-namespace --namespace chaosmania boutique ./helm
 
 Start simulating shoppers adding items to the cart
 ```shell
-helm upgrade --install --create-namespace --namespace chaosmania client-push ./helm/client  --set chaos.plan="/plans/shop.yaml"
+helm upgrade --install --create-namespace --namespace chaosmania client-push ./helm/client --set chaos.host=frontend --set chaos.plan="/plans/shop.yaml"
 ```
 
 Either simulate the checkout process with frequent data access
 ```shell
-helm upgrade --install --create-namespace --namespace chaosmania client-pop ./helm/client  --set chaos.plan="/plans/checkout_sql.yaml"
+helm upgrade --install --create-namespace --namespace chaosmania client-pop ./helm/client --set chaos.host=frontend --set chaos.plan="/plans/checkout_sql.yaml"
 ```
 
 Or simulate the checkout process with inefficient locking in a downstream service
 ```shell
-helm upgrade --install --create-namespace --namespace chaosmania client-pop ./helm/client  --set chaos.plan="/plans/checkout_lock.yaml"
+helm upgrade --install --create-namespace --namespace chaosmania client-pop ./helm/client --set chaos.host=frontend --set chaos.plan="/plans/checkout_lock.yaml"
 ```

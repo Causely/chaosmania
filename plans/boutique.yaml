@@ -4,8 +4,8 @@ phases:
 
     client:
       workers:
-        - instances: 1
-          duration: 1h
+        - instances: 10
+          duration: 60h
           delay: 10ms
 
     workload:
@@ -31,9 +31,12 @@ phases:
                 - name: PostgresqlQuery
                   config:
                     query: SELECT pg_sleep(0.2);
+                    maxopen: 5
+                    maxidle: 10
 
                 - name: RedisCommand
                   config:
+                    address: redis:6379
                     command: lpush
                     args:
                       - key1
@@ -47,6 +50,7 @@ phases:
               actions:
                 - name: RedisCommand
                   config:
+                    address: redis:6379
                     command: lpop
                     args:
                       - key1
@@ -97,7 +101,7 @@ phases:
 
                         - name: Sleep
                           config:
-                            duration: 3s
+                            duration: 500ms
 
                         # Unlock the mutex.
                         - name: GlobalMutexUnlock

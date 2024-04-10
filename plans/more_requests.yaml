@@ -61,6 +61,7 @@ phases:
                         # Execute redis commands
                         - name: RedisCommand
                           config:
+                            address: redis:6379
                             command: lpush
                             args:
                               - key1
@@ -139,6 +140,7 @@ phases:
 
                                 - name: RedisCommand
                                   config:
+                                    address: redis:6379
                                     command: lpop
                                     args:
                                       - key1

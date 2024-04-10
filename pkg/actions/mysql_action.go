@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"sync"
 	"time"
 
 	"database/sql"
@@ -14,7 +15,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"go.nhat.io/otelsql"
-	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.24.0"
 	"go.uber.org/zap"
 )
 
@@ -22,6 +23,9 @@ var MYDBQueryHistogram = promauto.NewHistogram(prometheus.HistogramOpts{
 	Name: "mysql_queries",
 	Help: "The number of MySQL queries",
 })
+
+var sqlDbRegisterOnce sync.Once
+var sqlDriverName string
 
 type MysqlQuery struct{}
 
@@ -42,25 +46,33 @@ type MysqlQueryConfig struct {
 }
 
 func openMysql(dsn string, host string, port int, dbname string) (*sql.DB, error) {
-	// Register the otelsql wrapper for the provided mysql driver.
-	driverName, err := otelsql.Register("mysql",
-		otelsql.AllowRoot(),
-		otelsql.TraceQueryWithoutArgs(),
-		otelsql.TraceRowsClose(),
-		otelsql.TraceRowsAffected(),
-		otelsql.WithDatabaseName(dbname),
-		otelsql.WithSystem(semconv.DBSystemMySQL),
-		otelsql.WithDefaultAttributes(
-			semconv.NetPeerName(host),
-			semconv.NetPeerPort(port),
-		),
-	)
-	if err != nil {
+	var dn string
+	var err error
+	sqlDbRegisterOnce.Do(func() {
+		// Register the otelsql wrapper for the provided mysql driver.
+		dn, err = otelsql.Register("mysql",
+			otelsql.AllowRoot(),
+			otelsql.TraceQueryWithoutArgs(),
+			otelsql.TraceRowsClose(),
+			otelsql.TraceRowsAffected(),
+			otelsql.WithDatabaseName(dbname),
+			otelsql.WithSystem(semconv.DBSystemMySQL),
+			otelsql.WithDefaultAttributes(
+				semconv.ServerAddress(host),
+				semconv.ServerPort(port),
+			),
+		)
+		if err == nil {
+			sqlDriverName = dn
+		}
+	})
+
+	if sqlDriverName == "" || err != nil {
 		return nil, err
 	}
 
 	// Connect to a Mysql database using the mysql driver wrapper.
-	return sql.Open(driverName, dsn)
+	return sql.Open(sqlDriverName, dsn)
 }
 
 func (mysql *MysqlQuery) Execute(ctx context.Context, cfg map[string]any) error {

@@ -18,6 +18,7 @@ phases:
               actions:
                 - name: RedisCommand
                   config:
+                    address: redis:6379
                     command: lpop
                     args:
                       - key1

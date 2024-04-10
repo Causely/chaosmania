@@ -96,5 +96,5 @@ helm upgrade --install --create-namespace --namespace chaosmania client ./helm/c
 
 Optionally provide a custom plan from the plans directory
 ```shell
-helm upgrade --install --create-namespace --namespace chaosmania client ./helm/client  --set chaos.plan="/plans/boutique.yaml"
+helm upgrade --install --create-namespace --namespace chaosmania client ./helm/client --set chaos.host=frontend --set chaos.plan="/plans/boutique.yaml"
 ```

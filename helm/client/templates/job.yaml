@@ -21,10 +21,15 @@ spec:
           - "--port"
           - {{.Values.chaos.port| quote}}
         volumeMounts:
-          - name: chaos-volume
+          - name: chaos-plans
             mountPath: /plans
+          - name: chaos-scenarios
+            mountPath: /scenarios
       volumes:
-        - name: chaos-volume
+        - name: chaos-plans
           configMap:
-            name: {{include "client.fullname" .}}-chaosconfig
+            name: {{include "client.fullname" .}}-plans
+        - name: chaos-scenarios
+          configMap:
+            name: {{include "client.fullname" .}}-scenarios 
       restartPolicy: Never

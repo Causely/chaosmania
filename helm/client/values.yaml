@@ -4,9 +4,9 @@ image:
   tag: "latest"
 
 resources:
-  limits:
-     cpu: 100m
-     memory: 128Mi
+  # limits:
+  #    cpu: 100m
+  #    memory: 128Mi
   requests:
     cpu: 10m
     memory: 64Mi
@@ -15,4 +15,5 @@ chaos:
   plan: "/plans/boutique.yaml"
   host: "single"
   port: "8080"
-  files: "plans/*.yaml"
+  plans: "plans/*.yaml"
+  scenarios: "scenarios/**.yaml"

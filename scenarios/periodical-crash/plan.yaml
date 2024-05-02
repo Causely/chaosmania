@@ -1,0 +1,16 @@
+---
+phases:
+  - name: Phase1
+    repeat: 5000
+
+    client:
+      workers:
+        - instances: 1
+          duration: 1h
+          delay: 1s
+
+    workload:
+      actions:
+        - name: Panic 
+          config:
+            probability: 0.001

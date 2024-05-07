@@ -9,6 +9,7 @@ ARG TARGETARCH
 
 COPY ./out/chaosmania-${TARGETOS}-${TARGETARCH} /bin/chaosmania
 COPY ./plans /plans
+COPY ./scenarios /scenarios
 
 # Create a user group 'chaosmania'
 RUN addgroup --system chaosmania -gid 3000

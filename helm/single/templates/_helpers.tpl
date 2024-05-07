@@ -114,17 +114,7 @@ Create the name of the service account to use
     httpGet:
       path: /health
       port: http
-  securityContext:
-    runAsNonRoot: true
-    seccompProfile:
-      type: RuntimeDefault
-    allowPrivilegeEscalation: false
-    privileged: false
-    readOnlyRootFilesystem: true
-    capabilities:
-      drop:
-      - all
-      add: ['NET_BIND_SERVICE']
+  securityContext: {{- toYaml .Values.securityContext | nindent 4}}
   resources: {{- toYaml .Values.resources | nindent 4}}
   env:
     {{- include "otel.env" . | nindent 4 }}

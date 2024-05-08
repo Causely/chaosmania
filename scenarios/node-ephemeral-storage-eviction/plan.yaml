@@ -1,0 +1,17 @@
+---
+phases:
+  - name: Phase1
+    repeat: 5000
+
+    client:
+      workers:
+        - instances: 1
+          duration: 1h
+          delay: 1s
+
+    workload:
+      actions:
+        - name: CreateFile
+          config:
+            directory: /tmp
+            size: 200000000 # 200Mb

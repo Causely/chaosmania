@@ -1,0 +1,18 @@
+---
+phases:
+  - name: Phase1
+    repeat: 5000
+
+    client:
+      workers:
+        - instances: 1
+          duration: 1h
+          delay: 1s
+
+    workload:
+      actions:
+        - name: AllocateMemory
+          config:
+            sizeBytes: 10000000 # 10Mb
+            numAllocations: 1
+            leak: true

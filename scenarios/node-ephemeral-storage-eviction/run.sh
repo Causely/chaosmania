@@ -4,11 +4,11 @@ SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 
 IMAGE_REPO=quay.io/causely/chaosmania
 IMAGE_TAG=latest
-NAMESPACE=container-cpu-congestion
+NAMESPACE=node-ephemeral-storage-eviction
 
 helm upgrade --install --create-namespace --namespace $NAMESPACE \
     --set image.tag=$IMAGE_TAG \
-    --set resources.limits.cpu="500m"\
+    --set securityContext.readOnlyRootFilesystem=false \
     --set replicaCount=3 \
     single $SCRIPT_DIR/../../helm/single 
 

@@ -15,6 +15,6 @@ helm upgrade --install --create-namespace --namespace $NAMESPACE \
 helm delete --namespace $NAMESPACE client
 helm upgrade --install --create-namespace --namespace $NAMESPACE \
     --set image.tag=$IMAGE_TAG \
-    --set chaos.plan=/scenarios/periodical-oom-plan.yaml \
+    --set chaos.plan=/scenarios/$NAMESPACE-plan.yaml \
     client $SCRIPT_DIR/../../helm/client
 

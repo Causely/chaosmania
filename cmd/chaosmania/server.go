@@ -86,6 +86,7 @@ func run(log *zap.Logger, port int64) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", handleRequests)
 	mux.HandleFunc("/health", handleHealth)
+	mux.HandleFunc("/ready", handleHealth)
 	mux.HandleFunc("/debug/pprof/", pprof.Index)
 	mux.HandleFunc("/debug/pprof/profile", pprof.Profile)
 	mux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)

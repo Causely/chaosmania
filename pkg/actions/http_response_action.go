@@ -15,6 +15,10 @@ type HTTPResponseConfig struct {
 	StatusCode int `json:"statusCode"`
 }
 
+type ContextKey string
+
+const ResponseWriterKey ContextKey = "http.ResponseWriter"
+
 func (a *HTTPResponse) Execute(ctx context.Context, cfg map[string]any) error {
 	config, err := pkg.ParseConfig[HTTPResponseConfig](cfg)
 	if err != nil {
@@ -22,9 +26,9 @@ func (a *HTTPResponse) Execute(ctx context.Context, cfg map[string]any) error {
 		return err
 	}
 
-	val := ctx.Value("http.ResponseWriter")
+	val := ctx.Value(ResponseWriterKey)
 	if val == nil {
-		return nil
+		panic("http.ResponseWriter not found in context")
 	}
 
 	w := val.(http.ResponseWriter)

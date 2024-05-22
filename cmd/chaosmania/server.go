@@ -27,10 +27,6 @@ import (
 	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
 )
 
-type contextKey string
-
-const responseWriterKey contextKey = "http.ResponseWriter"
-
 var LOGGER *zap.Logger
 
 var processedTransactionDuration = promauto.NewHistogram(prometheus.HistogramOpts{
@@ -60,7 +56,7 @@ func handleRequests(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		ctx := context.WithValue(r.Context(), responseWriterKey, w)
+		ctx := context.WithValue(r.Context(), actions.ResponseWriterKey, w)
 		ctx = logger.NewContext(ctx, LOGGER)
 
 		err = workload.Execute(ctx)

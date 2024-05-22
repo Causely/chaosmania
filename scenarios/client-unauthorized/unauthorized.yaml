@@ -1,0 +1,19 @@
+---
+phases:
+  - name: Phase1
+    repeat: 5000
+
+    client:
+      workers:
+        - instances: 3
+          duration: 1h
+          delay: 500ms
+
+    workload:
+      actions:
+        - name: Burn
+          config:
+            duration: 1ms
+        - name: HTTPResponse
+          config:
+            statusCode: 401

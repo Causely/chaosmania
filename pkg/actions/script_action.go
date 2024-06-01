@@ -86,7 +86,7 @@ func (sc *ScriptContext) Sleep(duration string) error {
 		return err
 	}
 
-	cfg.Duration = pkg.Duration{d}
+	cfg.Duration = pkg.Duration{Duration: d}
 
 	c, err := pkg.ConfigToMap(&cfg)
 	if err != nil {
@@ -125,7 +125,7 @@ func (sc *ScriptContext) Burn(duration string) error {
 		return err
 	}
 
-	cfg.Duration = pkg.Duration{d}
+	cfg.Duration = pkg.Duration{Duration: d}
 
 	c, err := pkg.ConfigToMap(&cfg)
 	if err != nil {
@@ -179,7 +179,10 @@ func (s *Script) Execute(ctx context.Context, cfg map[string]any) error {
 	}
 
 	vm.SetFieldNameMapper(goja.UncapFieldNameMapper())
-	vm.Set("ctx", scriptContext)
+	err = vm.Set("ctx", scriptContext)
+	if err != nil {
+		return err
+	}
 
 	run, ok := goja.AssertFunction(vm.Get("run"))
 	if !ok {

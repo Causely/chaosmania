@@ -18,6 +18,7 @@
 {{- define "common.labels" }}
 app.kubernetes.io/instance: {{ . }}
 app.kubernetes.io/name: {{ . }}
+app.kubernetes.io/part-of: video
 tags.datadoghq.com/env: test
 tags.datadoghq.com/service: {{ . }}
 tags.datadoghq.com/version: "1"
@@ -124,7 +125,6 @@ scrape-prometheus: "true"
     capabilities:
       drop:
       - all
-      add: ['NET_BIND_SERVICE']
   resources: {{- toYaml .Values.resources | nindent 4}}
   env:
     {{- include "otel.env" . | nindent 4 }}

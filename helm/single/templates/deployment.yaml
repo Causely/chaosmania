@@ -22,8 +22,6 @@ spec:
         app.kubernetes.io/name: {{ .Release.Name }}
         app.kubernetes.io/part-of: {{ .Values.business_application }}
     spec:
-      securityContext:
-        fsGroup: 2000
       {{- if .Values.nodeName }}
       nodeSelector:
         kubernetes.io/hostname: {{ .Values.nodeName }}
@@ -34,9 +32,14 @@ spec:
             value: "{{ .Values.ndots }}"
       containers:
       {{- include "chaosmania.container" . | nindent 8}}
+      {{ if .Values.persistence.enabled }}
+      securityContext:
+        fsGroup: 2000
       volumes:
-        {{ if .Values.persistence.enabled }}
         - name: repository
           persistentVolumeClaim:
-              claimName: data 
-        {{ end }}
+            claimName: data
+            {{ if .Values.persistence.storageClass }}
+            storageClassName: {{ .Values.persistence.storageClass }}
+            {{ end }}
+      {{ end }}

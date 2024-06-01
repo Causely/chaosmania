@@ -172,14 +172,13 @@ func (mongodb *MongoDBQuery) Execute(ctx context.Context, cfg map[string]any) er
 
 	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
 	defer cancel()
-	for {
-		client, err := mongo.Connect(ctx, mongodb.clientOpts)
-		if err != nil {
-			logger.FromContext(ctx).Error("failed to connect to mongodb", zap.Error(err))
-		}
-		mongodb.mongoClient = client
-		break
+
+	client, err := mongo.Connect(ctx, mongodb.clientOpts)
+	if err != nil {
+		logger.FromContext(ctx).Error("failed to connect to mongodb", zap.Error(err))
+		return err
 	}
+	mongodb.mongoClient = client
 
 	dbname := "admin"
 	if config.DBname != "" {

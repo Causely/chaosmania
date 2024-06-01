@@ -107,7 +107,10 @@ func (consumer *RabbitMQConsumerService) run(ctx context.Context) error {
 	}
 
 	for msg := range deliveries {
-		consumer.handleMessage(ctx, msg)
+		err = consumer.handleMessage(ctx, msg)
+		if err != nil {
+			logger.FromContext(ctx).Warn("failed to handle message", zap.Error(err))
+		}
 	}
 
 	return nil
@@ -130,7 +133,10 @@ func (consumer *RabbitMQConsumerService) ddHandleMessage(ctx context.Context, ms
 
 	err := tracer.Inject(span.Context(), ctx)
 	if err != nil {
-		msg.Ack(false)
+		ackErr := msg.Ack(false)
+		if ackErr != nil {
+			logger.FromContext(ctx).Warn("failed to ack message", zap.Error(ackErr))
+		}
 		return err
 	}
 
@@ -141,7 +147,10 @@ func (consumer *RabbitMQConsumerService) ddHandleMessage(ctx context.Context, ms
 
 	c, err := pkg.ConfigToMap(&cfg)
 	if err != nil {
-		msg.Ack(false)
+		ackErr := msg.Ack(false)
+		if ackErr != nil {
+			logger.FromContext(ctx).Warn("failed to ack message", zap.Error(ackErr))
+		}
 		child.Finish(tracer.WithError(err))
 		return err
 	}
@@ -175,7 +184,10 @@ func (consumer *RabbitMQConsumerService) handleMessage(ctx context.Context, msg 
 
 	c, err := pkg.ConfigToMap(&cfg)
 	if err != nil {
-		msg.Ack(false)
+		ackErr := msg.Ack(false)
+		if ackErr != nil {
+			logger.FromContext(ctx).Warn("failed to ack message", zap.Error(ackErr))
+		}
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
 		return err

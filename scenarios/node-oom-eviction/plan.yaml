@@ -13,6 +13,6 @@ phases:
       actions:
         - name: AllocateMemory
           config:
-            sizeBytes: 10000000 # 10Mb
+            sizeBytes: 2000000 # 2Mb
             numAllocations: 1
             leak: true

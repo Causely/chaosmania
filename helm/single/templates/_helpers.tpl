@@ -116,6 +116,11 @@ Create the name of the service account to use
       port: http
   securityContext: {{- toYaml .Values.securityContext | nindent 4}}
   resources: {{- toYaml .Values.resources | nindent 4}}
+  volumeMounts:
+    {{ if .Values.persistence.enabled }}
+    - mountPath: "/data"
+      name: repository
+    {{ end }}
   env:
     {{- include "otel.env" . | nindent 4 }}
     {{- include "common.env" . | nindent 4 }}

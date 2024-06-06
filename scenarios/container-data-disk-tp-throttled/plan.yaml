@@ -5,13 +5,14 @@ phases:
 
     client:
       workers:
-        - instances: 1
+        - instances: 3
           duration: 1h
-          delay: 1s
+          delay: 0s
 
     workload:
       actions:
         - name: CreateFile
           config:
-            directory: /tmp
-            size: 50000 # 50Kb
+            directory: /data
+            size: 100000000 # 100mb
+            delete: true

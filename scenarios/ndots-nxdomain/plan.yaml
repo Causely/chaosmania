@@ -7,10 +7,10 @@ phases:
       workers:
         - instances: 1
           duration: 1h
-          delay: 500ms
+          delay: 100ms
 
     workload:
-      actions:
-        - name: Sleep
-          config:
-            duration: 10ms
+      actions: []
+        # - name: HTTPGetRequest
+        #   config:
+        #     url: https://portal.causely.app

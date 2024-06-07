@@ -2,6 +2,7 @@ package actions
 
 import (
 	"context"
+
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	semconv "go.opentelemetry.io/otel/semconv/v1.24.0"
@@ -155,7 +156,7 @@ func (producer *RabbitMQProducerService) Produce(ctx context.Context, queue stri
 
 	prodTracer := otel.GetTracerProvider().Tracer("kafka-producer")
 
-	ctx, span := prodTracer.Start(ctx, "Produce Message", oteltrace.WithSpanKind(oteltrace.SpanKindProducer))
+	_, span := prodTracer.Start(ctx, "Produce Message", oteltrace.WithSpanKind(oteltrace.SpanKindProducer))
 	defer span.End()
 
 	span.SetAttributes(semconv.MessagingDestinationName(queue))

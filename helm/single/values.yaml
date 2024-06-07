@@ -3,6 +3,15 @@ image:
   pullPolicy: Always
   tag: "latest"
 
+ndots: 5
+
+persistence:
+  enabled: false
+  storageClass: ""
+  size: 11Gi
+
+nodeName: 
+
 resources:
   # limits:
   #   cpu: 100m

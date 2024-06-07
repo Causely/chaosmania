@@ -1,0 +1,50 @@
+---
+phases:
+  - name: Phase1
+    repeat: 5000
+
+    client:
+      workers:
+        - instances: 1
+          duration: 1h
+          delay: 0s
+
+    workload:
+      actions:
+        - name: PostgresqlQuery
+          config:
+            host: TODO
+            port: 5432
+            dbname: postgres
+            user: TODO
+            password: TODO
+            sslmode: require
+            query: |
+                  -- Create the table if it doesn't already exist
+                  CREATE TABLE IF NOT EXISTS iops_test (
+                      id SERIAL PRIMARY KEY,
+                      data TEXT
+                  );
+
+                  -- Randomly insert 100 rows
+                  INSERT INTO iops_test (data)
+                  SELECT md5(random()::text)
+                  FROM generate_series(1, 100)
+                  ON CONFLICT DO NOTHING;
+                  COMMIT;
+
+                  -- Randomly delete 100 rows
+                  DELETE FROM iops_test
+                  WHERE id IN (
+                      SELECT id
+                      FROM iops_test
+                      ORDER BY random()
+                      LIMIT 50
+                  );
+                  COMMIT;
+
+                  -- Select a sample of rows to ensure the table is accessed
+                  SELECT *
+                  FROM iops_test
+                  ORDER BY random()
+                  LIMIT 100;

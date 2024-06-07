@@ -123,7 +123,7 @@ func (postgres *PostgresqlQuery) Execute(ctx context.Context, cfg map[string]any
 		appname = config.AppName
 	}
 
-	connStr := fmt.Sprintf("host=%s port=%d user=%s dbname=%s password=%s sslmode=%s application_name=%s", host, port, dbname, user, password, sslmode, appname)
+	connStr := fmt.Sprintf("host=%s port=%d user=%s dbname=%s password=%s sslmode=%s application_name=%s", host, port, user, dbname, password, sslmode, appname)
 
 	var db *sql.DB
 	if pkg.IsDatadogEnabled() {

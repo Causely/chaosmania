@@ -45,11 +45,6 @@ func NewRedisService(name ServiceName, config map[string]any) (Service, error) {
 	if pkg.IsDatadogEnabled() {
 		opts := &redis8.Options{Addr: cfg.Address, DB: 0}
 		rdb := redistrace.NewClient(opts, redistrace.WithServiceName(cfg.PeerService))
-
-		if err != nil && err != redis8.Nil {
-			return nil, err
-		}
-
 		redisService.rdb8 = rdb
 	} else {
 		opts := &redis9.Options{
@@ -66,10 +61,6 @@ func NewRedisService(name ServiceName, config map[string]any) (Service, error) {
 
 		err = redisotel.InstrumentTracing(rdb)
 		if err != nil {
-			return nil, err
-		}
-
-		if err != nil && err != redis9.Nil {
 			return nil, err
 		}
 

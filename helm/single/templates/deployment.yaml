@@ -3,18 +3,24 @@ kind: Deployment
 metadata:
   name: {{ include "single.fullname" . }}
   labels:
-    {{- include "single.labels" . | nindent 4}}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/name: {{ .Release.Name }}
+    app.kubernetes.io/part-of: {{ .Values.business_application }}
 spec:
   strategy:
     type: Recreate
   selector:
     matchLabels:
-      {{- include "single.selectorLabels" . | nindent 6}}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/name: {{ .Release.Name }}
+      app.kubernetes.io/part-of: {{ .Values.business_application }}
   replicas: {{ .Values.replicaCount }}
   template:
     metadata:
       labels:
-        {{- include "single.labels" . | nindent 8}}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/name: {{ .Release.Name }}
+        app.kubernetes.io/part-of: {{ .Values.business_application }}
     spec:
       securityContext:
         fsGroup: 2000

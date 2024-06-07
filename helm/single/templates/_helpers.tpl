@@ -42,13 +42,6 @@ app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end }}
 
-{{/*
-Selector labels
-*/}}
-{{- define "single.selectorLabels" -}}
-app.kubernetes.io/name: {{ include "single.name" . }}
-app.kubernetes.io/instance: {{ .Release.Name }}
-{{- end }}
 
 {{/*
 Create the name of the service account to use
@@ -124,24 +117,4 @@ Create the name of the service account to use
   env:
     {{- include "otel.env" . | nindent 4 }}
     {{- include "common.env" . | nindent 4 }}
-{{ end -}}
-
-{{- define "chaosmania.service" }}
-apiVersion: v1
-kind: Service
-metadata:
-  name: {{ . }}
-  labels:
-    app.kubernetes.io/instance: {{ . }}
-    app.kubernetes.io/name: {{ . }}
-    scrape-prometheus: "true"
-spec:
-  type: ClusterIP
-  ports:
-    - port: 8080
-      targetPort: http
-      name: http
-  selector:
-    app.kubernetes.io/instance: {{ . }}
-    app.kubernetes.io/name: {{ . }}
 {{ end -}}

@@ -10,9 +10,8 @@ persistence:
   size: 11Gi
 #  storageClass:
 
-business_application: "single"
-
-#nodeName:
+business_application: "chaosmania"
+nodeName: 
 
 resources:
   # limits:

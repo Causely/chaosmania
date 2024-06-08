@@ -14,11 +14,13 @@ helm upgrade --install --namespace $NAMESPACE \
     --set replicaCount=1 \
     --set persistence.enabled=true \
     --set persistence.size=100Gi \
+    --set business_application=$NAMESPACE \
     single $SCRIPT_DIR/../../helm/single 
 
 helm delete --namespace $NAMESPACE client
 helm upgrade --install --namespace $NAMESPACE \
     --set image.tag=$IMAGE_TAG \
     --set chaos.plan=/scenarios/$NAMESPACE-plan.yaml \
+    --set business_application=$NAMESPACE \
     client $SCRIPT_DIR/../../helm/client
 

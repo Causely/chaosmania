@@ -120,9 +120,17 @@ func runWithOTEL(log *zap.Logger, port int64) {
 		},
 	))
 
-	handler := otelhttp.NewHandler(mux, "",
-		otelhttp.WithSpanNameFormatter(func(operation string, r *http.Request) string {
-			return r.URL.Path
+	handler := otelhttp.NewHandler(mux, "server",
+		otelhttp.WithSpanNameFormatter(func(operation string, req *http.Request) string {
+			return req.URL.Path
+		}),
+		otelhttp.WithFilter(func(req *http.Request) bool {
+			return req.URL.Path != "/health" &&
+				req.URL.Path != "/metrics" &&
+				req.URL.Path != "/debug/pprof/" &&
+				req.URL.Path != "/debug/pprof/profile" &&
+				req.URL.Path != "/debug/pprof/symbol" &&
+				req.URL.Path != "/debug/pprof/trace"
 		}),
 		otelhttp.WithTracerProvider(otel.GetTracerProvider()),
 		otelhttp.WithPropagators(otel.GetTextMapPropagator()),

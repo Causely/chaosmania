@@ -13,17 +13,20 @@ echo "Deploying frontend"
 helm upgrade --install --namespace $NAMESPACE \
     --set image.tag=$IMAGE_TAG \
     --set replicaCount=2 \
+    --set business_application=$NAMESPACE \
     frontend $SCRIPT_DIR/../../helm/single 
 
 echo "Deploying payment"
 helm upgrade --install --namespace $NAMESPACE \
     --set image.tag=$IMAGE_TAG \
     --set replicaCount=2 \
+    --set business_application=$NAMESPACE \
     payment $SCRIPT_DIR/../../helm/single 
 
 echo "Deploying DB"
 helm upgrade --install --namespace $NAMESPACE \
     --set global.postgresql.auth.postgresPassword=postgres \
+    --set commonLabels.app\.kubernetes\.io/part-of=$NAMESPACE \
     postgres oci://registry-1.docker.io/bitnamicharts/postgresql
 
 echo "Deploying client"
@@ -32,5 +35,6 @@ helm upgrade --install --namespace $NAMESPACE \
     --set image.tag=$IMAGE_TAG \
     --set chaos.host=frontend \
     --set chaos.plan=/scenarios/$NAMESPACE-plan.yaml \
+    --set business_application=$NAMESPACE \
     client $SCRIPT_DIR/../../helm/client
 

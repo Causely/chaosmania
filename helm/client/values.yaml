@@ -11,6 +11,8 @@ resources:
     cpu: 10m
     memory: 64Mi
 
+business_application: "chaosmania"
+
 chaos:
   plan: "/plans/boutique.yaml"
   host: "single"

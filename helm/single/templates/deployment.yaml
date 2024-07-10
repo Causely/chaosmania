@@ -21,6 +21,9 @@ spec:
         app.kubernetes.io/instance: {{ .Release.Name }}
         app.kubernetes.io/name: {{ .Release.Name }}
         app.kubernetes.io/part-of: {{ .Values.business_application }}
+        tags.datadoghq.com/env: test
+        tags.datadoghq.com/service: {{ include "single.fullname" . }}
+        tags.datadoghq.com/version: "1"
     spec:
       {{- if .Values.nodeName }}
       nodeSelector:
@@ -38,6 +41,11 @@ spec:
         - name: services
           secret:
             secretName: {{ include "single.fullname" . }}-services
+      {{- if .Values.datadog.enabled }}
+        - hostPath:
+            path: /var/run/datadog/
+          name: apmsocketpath
+      {{ end -}}
       {{ if .Values.persistence.enabled }}
         - name: repository
           persistentVolumeClaim:

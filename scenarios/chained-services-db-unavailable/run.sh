@@ -4,22 +4,30 @@ SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 
 IMAGE_REPO=quay.io/causely/chaosmania
 IMAGE_TAG=latest
-NAMESPACE=cm-container-cpu-congestion
+NAMESPACE=cm-chained-services-db-unavailable
 
 kubectl create namespace $NAMESPACE
 kubectl label namespace $NAMESPACE istio-injection=enabled --overwrite
 
+echo "Deploying frontend"
 helm upgrade --install --namespace $NAMESPACE \
     --set image.tag=$IMAGE_TAG \
-    --set resources.limits.cpu="500m"\
-    --set replicaCount=3 \
+    --set replicaCount=2 \
     --set business_application=$NAMESPACE \
-    single $SCRIPT_DIR/../../helm/single 
+    frontend $SCRIPT_DIR/../../helm/single 
 
+echo "Deploying payment"
+helm upgrade --install --namespace $NAMESPACE \
+    --set image.tag=$IMAGE_TAG \
+    --set replicaCount=2 \
+    --set business_application=$NAMESPACE \
+    payment $SCRIPT_DIR/../../helm/single 
+
+echo "Deploying client"
 helm delete --namespace $NAMESPACE client
 helm upgrade --install --namespace $NAMESPACE \
     --set image.tag=$IMAGE_TAG \
-    --set chaos.host=single.$NAMESPACE.svc.cluster.local. \
+    --set chaos.host=frontend \
     --set chaos.plan=/scenarios/$NAMESPACE-plan.yaml \
     --set business_application=$NAMESPACE \
     client $SCRIPT_DIR/../../helm/client

@@ -14,4 +14,4 @@ phases:
         - name: CreateFile
           config:
             directory: /tmp
-            size: 200000000 # 200Mb
+            size: 400000000 # 40Mb

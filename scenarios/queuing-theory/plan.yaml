@@ -1,0 +1,53 @@
+---
+phases:
+  - name: Phase1
+
+    repeat: 500
+
+    client:
+      workers:
+        - instances: 26
+          duration: 10m
+          delay: 950ms
+
+        - instances: 28
+          duration: 10m
+          delay: 950ms
+
+        - instances: 30
+          duration: 10m
+          delay: 950ms
+      
+        - instances: 32
+          duration: 10m
+          delay: 950ms
+
+        - instances: 34
+          duration: 10m
+          delay: 950ms
+
+        - instances: 36
+          duration: 10m
+          delay: 950ms
+
+        - instances: 34
+          duration: 10m
+          delay: 950ms
+
+        - instances: 32
+          duration: 10m
+          delay: 950ms
+
+        - instances: 30
+          duration: 10m
+          delay: 950ms
+
+        - instances: 28
+          duration: 10m
+          delay: 950ms
+
+    workload:
+      actions:
+        - name: Fibonacci
+          config:
+            value: 34

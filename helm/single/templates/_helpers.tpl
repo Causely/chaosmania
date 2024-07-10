@@ -86,6 +86,28 @@ Create the name of the service account to use
 {{- end }}
 {{ end -}}
 
+{{- define "datadog.env" }}
+{{- if .Values.datadog.enabled }}
+- name: DATADOG_ENABLED
+  value: "true"
+- name: DD_DATA_STREAMS_ENABLED
+  value: "true"
+- name: DD_TRACE_AGENT_URL
+  value: 'unix:///var/run/datadog/apm.socket'
+- name: DD_ENV
+  valueFrom:
+    fieldRef:
+      fieldPath: metadata.labels['tags.datadoghq.com/env']
+- name: DD_SERVICE
+  valueFrom:
+    fieldRef:
+      fieldPath: metadata.labels['tags.datadoghq.com/service']
+- name: DD_VERSION
+  valueFrom:
+    fieldRef:
+      fieldPath: metadata.labels['tags.datadoghq.com/version']
+{{ end -}}
+{{ end -}}
 
 {{- define "chaosmania.container" }}
 - name: chaosmania
@@ -121,13 +143,19 @@ Create the name of the service account to use
     - mountPath: /etc/chaosmania/ 
       name: services
       readOnly: true
+{{- if .Values.datadog.enabled }}
+    - name: apmsocketpath
+      mountPath: /var/run/datadog
+{{ end }}
   env:
     {{- include "otel.env" . | nindent 4 }}
     {{- include "common.env" . | nindent 4 }}
+    {{- include "datadog.env" . | nindent 4 }}
     - name: ENABLED_BACKGROUND_SERVICES
       value: "{{ .Values.enabled_background_services | join "," }}"
     - name: GOMAXPROCS
       valueFrom:
         resourceFieldRef:
+          divisor: "1"
           resource: limits.cpu
 {{ end -}}

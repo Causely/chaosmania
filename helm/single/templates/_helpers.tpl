@@ -68,6 +68,9 @@ Create the name of the service account to use
 {{ end -}}
 
 {{- define "otel.env" }}
+{{- if .Values.otlp.enabled }}
+- name: OTEL_ENABLED
+  value: "true"
 {{- if .Values.otlp.endpoint }}
 - name: OTEL_EXPORTER_OTLP_ENDPOINT
   value: {{ .Values.otlp.endpoint }}
@@ -79,6 +82,7 @@ Create the name of the service account to use
 {{- if .Values.otlp.headers }}
 - name: OTEL_EXPORTER_OTLP_HEADERS
   value: {{ .Values.otlp.headers | quote }}
+{{- end }}
 {{- end }}
 {{ end -}}
 
@@ -109,12 +113,21 @@ Create the name of the service account to use
       port: http
   securityContext: {{- toYaml .Values.securityContext | nindent 4}}
   resources: {{- toYaml .Values.resources | nindent 4}}
-  {{ if .Values.persistence.enabled }}
   volumeMounts:
+  {{ if .Values.persistence.enabled }}
     - mountPath: "/data"
       name: repository
   {{ end }}
+    - mountPath: /etc/chaosmania/ 
+      name: services
+      readOnly: true
   env:
     {{- include "otel.env" . | nindent 4 }}
     {{- include "common.env" . | nindent 4 }}
+    - name: ENABLED_BACKGROUND_SERVICES
+      value: "{{ .Values.enabled_background_services | join "," }}"
+    - name: GOMAXPROCS
+      valueFrom:
+        resourceFieldRef:
+          resource: limits.cpu
 {{ end -}}

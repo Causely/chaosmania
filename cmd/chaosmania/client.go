@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -15,7 +16,9 @@ import (
 	"github.com/Causely/chaosmania/pkg"
 	"github.com/Causely/chaosmania/pkg/actions"
 	"github.com/urfave/cli/v2"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.uber.org/zap"
+	httptrace "gopkg.in/DataDog/dd-trace-go.v1/contrib/net/http"
 	"gopkg.in/yaml.v2"
 )
 
@@ -46,13 +49,30 @@ func loadPlan(logger *zap.Logger, path string) (actions.Plan, map[string]any, er
 	return plan, pkg.Convert(raw).(map[string]any), nil
 }
 
-func sendRequest(logger *zap.Logger, payload map[string]any, host string, port int64) error {
+func doRequest(req *http.Request, timeout *time.Duration) (*http.Response, error) {
+	client := http.Client{}
+
+	if timeout != nil {
+		client.Timeout = *timeout
+	}
+
+	if pkg.IsDatadogEnabled() {
+		client := httptrace.WrapClient(&client)
+		return client.Do(req)
+	} else if pkg.IsOpenTelemetryEnabled() {
+		client.Transport = otelhttp.NewTransport(http.DefaultTransport)
+		return client.Do(req)
+	} else {
+		return client.Do(req)
+	}
+}
+
+func sendRequest(logger *zap.Logger, payload map[string]any, host string, port int64, headers map[string]string) error {
 	payloadBytes, err := json.Marshal(payload)
 	if err != nil {
 		return err
 	}
 
-	client := &http.Client{}
 	req, err := http.NewRequest("POST", fmt.Sprintf("http://%s:%d/", host, port), bytes.NewBuffer(payloadBytes))
 	if err != nil {
 		logger.Error("failed to create request", zap.Error(err))
@@ -60,7 +80,11 @@ func sendRequest(logger *zap.Logger, payload map[string]any, host string, port i
 	}
 
 	req.Header.Set("Content-Type", "application/json")
-	resp, err := client.Do(req)
+	for k, v := range headers {
+		req.Header.Set(k, v)
+	}
+
+	resp, err := doRequest(req, nil)
 
 	if err != nil {
 		return err
@@ -91,18 +115,13 @@ type statistics struct {
 	allStatusCodes map[int]int
 }
 
-func runWorker(logger *zap.Logger, stats *statistics, timeout time.Duration, ctx context.Context, delay time.Duration, host string, port int64, payloadBytes []byte) {
+func runWorker(logger *zap.Logger, stats *statistics, timeout time.Duration, ctx context.Context, delay time.Duration, host string, port int64, payloadBytes []byte, headers map[string]string) {
 	statusCodes := make(map[int]int)
 
 	// Use 10sec client timeout by default, but allow the client to set a custom timeout
 	to := time.Duration(10) * time.Second
 	if timeout != 0 {
 		to = timeout
-	}
-
-	// Send the request to the server
-	client := &http.Client{
-		Timeout: to,
 	}
 
 loop:
@@ -114,7 +133,8 @@ loop:
 			start := time.Now()
 
 			// Create a new HTTP POST request with the payload
-			req, err := http.NewRequestWithContext(ctx, "POST", fmt.Sprintf("http://%s:%d/", host, port), bytes.NewBuffer(payloadBytes))
+			url := fmt.Sprintf("http://%s:%d/", host, port)
+			req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(payloadBytes))
 			if err != nil {
 				logger.Error("failed to create request", zap.Error(err))
 				return
@@ -123,7 +143,15 @@ loop:
 			// Set the content type header to indicate a JSON payload
 			req.Header.Set("Content-Type", "application/json")
 
-			resp, err := client.Do(req)
+			for k, v := range headers {
+				if k == "Host" {
+					req.Host = v
+				} else {
+					req.Header.Set(k, v)
+				}
+			}
+
+			resp, err := doRequest(req, &to)
 			took := time.Since(start)
 
 			if err != nil {
@@ -158,13 +186,13 @@ loop:
 	}
 }
 
-func executePhase(logger *zap.Logger, phase actions.Phase, raw map[string]any, host string, port int64) error {
+func executePhase(logger *zap.Logger, phase actions.Phase, raw map[string]any, host string, port int64, header map[string]string) error {
 	logger.Info("")
 	logger.Info(fmt.Sprintf("Starting phase: %s", phase.Name))
 
 	// Setup
 	if s, ok := raw["setup"]; ok {
-		err := sendRequest(logger, s.(map[string]any), host, port)
+		err := sendRequest(logger, s.(map[string]any), host, port, header)
 		if err != nil {
 			return err
 		}
@@ -194,7 +222,7 @@ func executePhase(logger *zap.Logger, phase actions.Phase, raw map[string]any, h
 		for i := 0; i < int(w.Instances); i++ {
 			go func(stats *statistics) {
 				defer wg.Done()
-				runWorker(logger, stats, w.Timeout, ctx, w.Delay, host, port, payloadBytes)
+				runWorker(logger, stats, w.Timeout, ctx, w.Delay, host, port, payloadBytes, header)
 			}(&stats)
 		}
 
@@ -240,7 +268,7 @@ func executePhase(logger *zap.Logger, phase actions.Phase, raw map[string]any, h
 
 	// Teardown
 	if t, ok := raw["teardown"]; ok {
-		err := sendRequest(logger, t.(map[string]any), host, port)
+		err := sendRequest(logger, t.(map[string]any), host, port, header)
 		if err != nil {
 			return err
 		}
@@ -273,11 +301,21 @@ func command_client(logger *zap.Logger, ctx *cli.Context) error {
 	planPath := ctx.String("plan")
 	host := ctx.String("host")
 	port := ctx.Int64("port")
+	header := ctx.StringSlice("header")
+
+	headers := make(map[string]string)
+	for _, h := range header {
+		parts := strings.Split(h, ":")
+		headers[parts[0]] = parts[1]
+	}
 
 	plan, raw, err := loadPlan(logger, planPath)
 	if err != nil {
 		return err
 	}
+
+	shutdown := InitOTLPProvider(logger)
+	defer shutdown()
 
 	logger.Info("Successfully loaded execution plan")
 	logger.Info(fmt.Sprintf("Phases: %d", len(plan.Phases)))
@@ -296,7 +334,7 @@ func command_client(logger *zap.Logger, ctx *cli.Context) error {
 
 	for i, phase := range plan.Phases {
 		for j := 0; j < int(phase.Repeat); j++ {
-			err := executePhase(logger, phase, raw["phases"].([]any)[i].(map[string]any), host, port)
+			err := executePhase(logger, phase, raw["phases"].([]any)[i].(map[string]any), host, port, headers)
 			if err != nil {
 				return err
 			}

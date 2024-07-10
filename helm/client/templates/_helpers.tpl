@@ -60,3 +60,22 @@ Create the name of the service account to use
 {{- default "default" .Values.serviceAccount.name }}
 {{- end }}
 {{- end }}
+
+{{- define "otel.env" }}
+{{- if .Values.otlp.enabled }}
+- name: OTEL_ENABLED
+  value: "true"
+{{- if .Values.otlp.endpoint }}
+- name: OTEL_EXPORTER_OTLP_ENDPOINT
+  value: {{ .Values.otlp.endpoint }}
+{{- end }}
+{{- if .Values.otlp.insecure }}
+- name: OTEL_EXPORTER_OTLP_INSECURE
+  value: {{ .Values.otlp.insecure | quote }}
+{{- end }}
+{{- if .Values.otlp.headers }}
+- name: OTEL_EXPORTER_OTLP_HEADERS
+  value: {{ .Values.otlp.headers | quote }}
+{{- end }}
+{{- end }}
+{{ end -}}

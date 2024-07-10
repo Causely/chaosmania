@@ -19,3 +19,9 @@ chaos:
   port: "8080"
   plans: "plans/*.yaml"
   scenarios: "scenarios/**.yaml"
+  header: ""
+
+otlp:
+  enabled: true
+  endpoint: http://alloy.monitoring:4318
+  insecure: true

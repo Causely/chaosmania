@@ -3,7 +3,7 @@
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 
 $SCRIPT_DIR/chained-services/run.sh
-# $SCRIPT_DIR/chained-virtual-services/run.sh
+$SCRIPT_DIR/chained-virtual-services/run.sh
 $SCRIPT_DIR/client-throttled/run.sh
 $SCRIPT_DIR/client-unauthorized/run.sh
 $SCRIPT_DIR/container-cpu-congestion/run.sh

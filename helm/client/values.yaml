@@ -22,6 +22,6 @@ chaos:
   header: ""
 
 otlp:
-  enabled: true
+  enabled: false
   endpoint: http://alloy.monitoring:4318
   insecure: true

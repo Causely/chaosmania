@@ -5,9 +5,9 @@ phases:
 
     client:
       workers:
-        - instances: 5
+        - instances: 2
           duration: 1h
-          delay: 5s
+          delay: 1s
 
     workload:
       actions:

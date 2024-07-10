@@ -26,15 +26,15 @@ helm upgrade --install --namespace $NAMESPACE \
 echo "Deploying DB"
 helm upgrade --install --namespace $NAMESPACE \
     --set global.postgresql.auth.postgresPassword=postgres \
-    --set commonLabels.app\.kubernetes\.io/part-of=$NAMESPACE \
     postgres oci://registry-1.docker.io/bitnamicharts/postgresql
+    # --set commonLabels.app\.kubernetes\.io/part-of=$NAMESPACE \
 
 echo "Deploying client"
 helm delete --namespace $NAMESPACE client
 helm upgrade --install --namespace $NAMESPACE \
     --set image.tag=$IMAGE_TAG \
     --set chaos.host=frontend \
-    --set chaos.plan=/scenarios/$NAMESPACE-plan.yaml \
+    --set chaos.plan=/scenarios/cm-$NAMESPACEs-plan.yaml \
     --set business_application=$NAMESPACE \
     client $SCRIPT_DIR/../../helm/client
 

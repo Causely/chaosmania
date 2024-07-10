@@ -1,0 +1,23 @@
+---
+phases:
+  - name: Phase1
+    repeat: 5000
+
+    client:
+      workers:
+        - instances: 5
+          duration: 1h
+          delay: 5s
+
+    workload:
+      actions:
+      - config:
+          script: |
+            function run() {
+                data_broker = ctx.get_service("kafka-producer");
+                msg = JSON.stringify({
+                  "key": "value",
+                });
+                data_broker.produce(ctx.ctx, "test1", msg);
+            }
+        name: Script

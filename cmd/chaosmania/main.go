@@ -46,6 +46,11 @@ func main() {
 					Usage:    "Pod",
 					Required: true,
 				},
+				&cli.StringSliceFlag{
+					Name:     "header",
+					Usage:    "Headers to include in the request",
+					Required: false,
+				},
 			},
 		}, {
 			Name: "server",

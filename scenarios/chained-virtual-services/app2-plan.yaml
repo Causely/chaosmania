@@ -5,9 +5,9 @@ phases:
 
     client:
       workers:
-        - instances: 5
+        - instances: 1
           duration: 1h
-          delay: 5s
+          delay: 1s
 
     workload:
       actions:
@@ -23,7 +23,7 @@ phases:
         # Send request to payment
         - name: HTTPRequest
           config:
-            url: http://payment:8080
+            url: http://payment-app2:8080
             body:
               actions:
                 - name: AllocateMemory

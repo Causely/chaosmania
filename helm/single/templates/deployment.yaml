@@ -32,10 +32,13 @@ spec:
             value: "{{ .Values.ndots }}"
       containers:
       {{- include "chaosmania.container" . | nindent 8}}
-      {{ if .Values.persistence.enabled }}
       securityContext:
         fsGroup: 2000
       volumes:
+        - name: services
+          secret:
+            secretName: {{ include "single.fullname" . }}-services
+      {{ if .Values.persistence.enabled }}
         - name: repository
           persistentVolumeClaim:
             claimName: data

@@ -42,4 +42,72 @@ phases:
                     dbname: postgres
                     user: postgres
                     password: postgres
-                    query: select * from postgres.information_schema.tables;
+                    query: |
+                      CREATE TABLE IF NOT EXISTS my_table (
+                          id SERIAL PRIMARY KEY,
+                          name VARCHAR(100),
+                          value INTEGER
+                      );
+
+                - name: PostgresqlQuery
+                  config:
+                    host: postgres-postgresql
+                    port: 5432
+                    dbname: postgres
+                    user: postgres
+                    password: postgres
+                    query: |
+                      INSERT INTO my_table (name, value)
+                      VALUES (
+                          'name_' || (RANDOM() * 100)::INT,
+                          (RANDOM() * 100)::INT
+                      )
+                      ON CONFLICT DO NOTHING; -- Ensures idempotency in case of conflict
+
+                - name: PostgresqlQuery
+                  config:
+                    host: postgres-postgresql
+                    port: 5432
+                    dbname: postgres
+                    user: postgres
+                    password: postgres
+                    query: |
+                      DELETE FROM my_table
+                      WHERE id IN (
+                          SELECT id
+                          FROM my_table
+                          ORDER BY RANDOM()
+                          LIMIT 1
+                      );
+
+                - name: PostgresqlQuery
+                  config:
+                    host: postgres-postgresql
+                    port: 5432
+                    dbname: postgres
+                    user: postgres
+                    password: postgres
+                    query: |
+                      UPDATE my_table
+                      SET value = (RANDOM() * 100)::INT
+                      WHERE id IN (
+                          SELECT id
+                          FROM my_table
+                          ORDER BY RANDOM()
+                          LIMIT 10
+                      );
+
+
+                - name: PostgresqlQuery
+                  config:
+                    host: postgres-postgresql
+                    port: 5432
+                    dbname: postgres
+                    user: postgres
+                    password: postgres
+                    query: |
+                      SELECT *
+                      FROM my_table
+                      ORDER BY RANDOM()
+                      LIMIT 10;
+

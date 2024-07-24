@@ -4,29 +4,13 @@ phases:
 
     client:
       workers:
-        - instances: 10
+        - instances: 3
           duration: 10m
           delay: 200ms
-          timeout: 60s
 
     workload:
       actions:
         # Stress Inventory Service and propagate to Order Service
-        - name: HTTPRequest
-          config:
-            url: http://inventory-service:8080
-            body:
-              actions:
-                - name: AllocateMemory
-                  config:
-                    sizeBytes: 200
-                    numAllocations: 200
-
-                # Sleep to simulate delay before Order Service is impacted
-                - name: Sleep
-                  config:
-                    duration: 10s
-
                 - name: HTTPRequest
                   config:
                     url: http://order-service:8080

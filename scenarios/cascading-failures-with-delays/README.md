@@ -1,8 +1,8 @@
-# Cascading Failures with Delays Scenario
+# Payment Service CPU Overload Scenario
 
 ## Overview
 
-This scenario simulates cascading failures across multiple services in a microservices architecture, introducing delays between the failure of one service and the appearance of symptoms in dependent services. The scenario helps identify how failures propagate through the system and affect downstream services, providing insights into the resilience and robustness of the overall architecture.
+This scenario simulates high CPU load in the Payment Service, which causes cascading delays and performance issues in dependent services such as the Order Service and Frontend Service. The goal is to identify how high CPU usage in the Payment Service impacts the overall system, including order processing delays and degraded user experience on the frontend.
 
 ## Topology
 
@@ -13,82 +13,61 @@ This scenario simulates cascading failures across multiple services in a microse
 
 ## Objective
 
-To test the resilience of the microservices architecture by inducing failures in the Inventory Service and observing the propagation of these failures to the Order Service, Payment Service, and Frontend Service, with delays introduced to simulate real-life scenarios.
+To test the resilience and performance of the microservices architecture by inducing high CPU load in the Payment Service and observing the resulting delays and performance degradation in the Order Service and Frontend Service.
 
 ## Folder Structure
 
 ```plaintext
 scenarios/
-├── cascading-failures/
-│   ├── inventory-plan.yaml
-│   ├── inventory-vs.yaml
-│   ├── order-plan.yaml
-│   ├── order-vs.yaml
-│   ├── payment-vs.yaml
-│   ├── frontend-vs.yaml
-│   ├── gateway.yaml
+├── payment-service-cpu-overload/
+│   ├── plan.yaml
 │   ├── run.sh
 │   ├── README.md
 ```
 
 ## Configuration Files
 
-### inventory-plan.yaml
+- **plan.yaml**
 
-This file defines the ChaosMania plan for the Inventory Service.
+This file defines the ChaosMania plan for inducing high CPU load in the Payment Service. The plan includes actions to simulate inefficient algorithms and memory leaks that cause the CPU load to increase progressively over time.
 
-### inventory-vs.yaml
+- **prun.sh**
 
-This file defines the VirtualService for the Inventory Service.
-
-### order-plan.yaml
-
-This file defines the ChaosMania plan for the Order Service.
-
-### order-vs.yaml
-
-This file defines the VirtualService for the Order Service.
-
-### payment-vs.yaml
-
-This file defines the VirtualService for the Payment Service.
-
-### frontend-vs.yaml
-
-This file defines the VirtualService for the Frontend Service.
-
-### gateway.yaml
-
-This file defines the Istio Gateway configuration.
-
-### run.sh
-
-This script sets up the environment, deploys the necessary services, and runs the ChaosMania scenarios.
+This script sets up the environment, deploys the necessary services, and runs the ChaosMania scenario defined in the plan.yaml file.
 
 ## Error Propagation Schema
-
 ```plaintext
-┌──────────────────┐       ┌────────────────┐       ┌────────────────┐
-│ Inventory        │       │ Order          │       │ Payment        │
-│ Service          │──────▶│ Service        │──────▶│ Service        │
-│ (Simulate        │       │ (High CPU,     │       │ (Memory        │
-│ Memory Load)     │       │ Memory Load)   │       │ Allocation)    │
-└──────────────────┘       └────────────────┘       └────────────────┘
-         │                        │                        │
-         │                        │                        │
-         │                        │                        │
-         ▼                        ▼                        ▼
-┌──────────────────┐       ┌────────────────┐       ┌────────────────┐
-│ Sleep 10s        │       │ Sleep 10s      │       │ Sleep 10s      │
-│ (Delay Propagation) │       │ (Delay Propagation) │       │ (Delay Propagation) │
-└──────────────────┘       └────────────────┘       └────────────────┘
-         │                        │                        │
-         ▼                        │                        │
-┌──────────────────┐              │                        │
-│                  │              │                        │
-│ Frontend         │◀─────────────┘                        │
-│ Service          │                                       │
-│ (Memory          │◀──────────────────────────────────────┘
-│ Allocation,      │
-│ Redis Command)   │
-└──────────────────┘
+┌───────────────────┐
+│                   │
+│ Payment Service   │
+│ (High CPU Load)   │
+└───────────────────┘
+         │
+         ▼
+┌───────────────────┐
+│                   │
+│ Order Service     │
+│ (Delayed Orders)  │
+└───────────────────┘
+         │
+         ▼
+┌───────────────────┐
+│                   │
+│ Frontend Service  │
+│ (Slow Responses)  │
+└───────────────────┘
+```
+
+## Monitoring Metrics
+
+Order Service
+
+	•	High Latency: Increased response time for order processing requests.
+	•	Time Out Errors: Higher rate of timeout errors in order processing requests.
+	•	Increased Queue Length: Number of pending orders or length of order processing queue.
+
+Frontend Service
+
+	•	Slow Checkout Process: Increased response time for checkout-related API calls.
+	•	Error Messages: Higher rate of error responses during the checkout process.
+	•	Unresponsive UI: Increased frontend page load times and interaction response times.

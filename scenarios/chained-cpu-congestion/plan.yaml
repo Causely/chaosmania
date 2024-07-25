@@ -1,15 +1,38 @@
+---
 phases:
-  - name: Simulate_Cascading_Failures_With_Delays
+  - name: Phase1
     repeat: 1
-
     client:
       workers:
-        - instances: 3
+        - instances: 5
           duration: 10m
-          delay: 200ms
+          delay: 2s
 
     workload:
       actions:
+        - name: AllocateMemory
+          config:
+            sizeBytes: 1000
+            numAllocations: 1000
+        
+        - name: Burn
+          config:
+            duration: 20ms
+
+        # Send request to payment
+        - name: HTTPRequest
+          config:
+            url: http://payment:8080
+            body:
+              actions:
+                - name: AllocateMemory
+                  config:
+                    sizeBytes: 1000
+                    numAllocations: 1000
+                
+                - name: Burn
+                  config:
+                    duration: 10ms
         # Stress Inventory Service and propagate to Order Service
                 - name: HTTPRequest
                   config:

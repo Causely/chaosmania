@@ -23,18 +23,12 @@ helm upgrade --install --namespace $NAMESPACE \
     --set business_application=$NAMESPACE \
     payment $SCRIPT_DIR/../../helm/single 
 
-echo "Deploying DB"
+echo "Deploying orders"
 helm upgrade --install --namespace $NAMESPACE \
-    --set global.postgresql.auth.postgresPassword=postgres \
-    --set commonLabels.app\.kubernetes\.io/part-of=$NAMESPACE \
-    postgres oci://registry-1.docker.io/bitnamicharts/postgresql
-
-helm upgrade --install --namespace $NAMESPACE \
-    --set serviceMonitor.enabled=true \
-    --set config.datasource.host=postgres-postgresql \
-    --set config.datasource.password=postgres \
-    --set config.datasource.user=postgres \
-    postgres-exporter prometheus-community/prometheus-postgres-exporter
+    --set image.tag=$IMAGE_TAG \
+    --set replicaCount=2 \
+    --set business_application=$NAMESPACE \
+    payment $SCRIPT_DIR/../../helm/single 
 
 echo "Deploying client"
 helm delete --namespace $NAMESPACE client

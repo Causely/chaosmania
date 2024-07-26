@@ -51,6 +51,6 @@ phases:
                       - name: HTTPResponse
                         config:
                         statusCodesWithProbabilities:
-                        200: 0.5
-                        500: 0.5
+                        "200": 0.5
+                        "500": 0.5
 

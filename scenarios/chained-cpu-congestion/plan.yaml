@@ -8,75 +8,49 @@ phases:
           duration: 10m
           delay: 2s
 
+    
     workload:
       actions:
-        - name: AllocateMemory
+        - name: Sleep
           config:
-            sizeBytes: 1000
-            numAllocations: 1000
-        
-        - name: Burn
-          config:
-            duration: 20ms
+            duration: 1s
 
-        # Send request to payment
+        # Send request to order service
         - name: HTTPRequest
           config:
-            url: http://payment:8080
+            url: http://order-service:8080
             body:
-              actions:
-                - name: AllocateMemory
-                  config:
-                    sizeBytes: 1000
-                    numAllocations: 1000
-                
+              actions:    
                 - name: Burn
                   config:
                     duration: 10ms
-        # Stress Inventory Service and propagate to Order Service
+                - name: Sleep
+                  config:
+                  duration: 1s
+                - name: HTTPResponse
+                  config:
+                  statusCodesWithProbabilities:
+                    "200": 0.8
+                    "500": 0.2
+                  # 404: 0.1
+
+                # Send request to payment service
                 - name: HTTPRequest
                   config:
-                    url: http://order-service:8080
+                    url: http://payment-service:8080
                     body:
                       actions:
-                        - name: Burn
-                          config:
-                            duration: 1000ms
+                      - name: AllocateMemory
+                        config:
+                          sizeBytes: 25000 # 25Kb
+                          numAllocations: 1
+                          leak: true
+                      - name: Burn
+                        config:
+                        duration: 500ms
+                      - name: HTTPResponse
+                        config:
+                        statusCodesWithProbabilities:
+                        200: 0.5
+                        500: 0.5
 
-                        # Sleep to simulate delay before Payment Service is impacted
-                        - name: Sleep
-                          config:
-                            duration: 10s
-
-                        - name: HTTPRequest
-                          config:
-                            url: http://payment-service:8080
-                            body:
-                              actions:
-                                - name: AllocateMemory
-                                  config:
-                                    sizeBytes: 200
-                                    numAllocations: 200
-
-                                # Sleep to simulate delay before Frontend Service is impacted
-                                - name: Sleep
-                                  config:
-                                    duration: 10s
-
-                                - name: HTTPRequest
-                                  config:
-                                    url: http://frontend-service:8080
-                                    body:
-                                      actions:
-                                        - name: AllocateMemory
-                                          config:
-                                            sizeBytes: 200
-                                            numAllocations: 200
-
-                                        - name: RedisCommand
-                                          config:
-                                            address: redis:6379
-                                            command: lpush
-                                            args:
-                                              - key1
-                                              - value1

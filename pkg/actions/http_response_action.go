@@ -21,8 +21,11 @@ type ContextKey string
 
 const ResponseWriterKey ContextKey = "http.ResponseWriter"
 
-func (a *HTTPResponse) Execute(ctx context.Context, cfg map[string]any) error {
-	config, err := pkg.ParseConfig[HTTPResponseConfig](cfg)
+func (a *HTTPResponse) Execute(ctx context.Context, cfg map[string]interface{}) error {
+	// Ensure all keys are strings before parsing
+	convertedCfg := pkg.Convert(cfg).(map[string]interface{})
+
+	config, err := pkg.ParseConfig[HTTPResponseConfig](convertedCfg)
 	if err != nil {
 		logger.FromContext(ctx).Warn("failed to parse config", zap.Error(err))
 		return err
@@ -68,7 +71,7 @@ func selectStatusCode(statusCodes map[int]float64) int {
 	return http.StatusOK
 }
 
-func (a *HTTPResponse) ParseConfig(data map[string]any) (any, error) {
+func (a *HTTPResponse) ParseConfig(data map[string]interface{}) (interface{}, error) {
 	return pkg.ParseConfig[HTTPResponseConfig](data)
 }
 

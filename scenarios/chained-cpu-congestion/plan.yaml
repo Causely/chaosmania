@@ -4,11 +4,9 @@ phases:
     repeat: 1
     client:
       workers:
-        - instances: 5
+        - instances: 1
           duration: 10m
-          delay: 2s
-
-    
+          delay: 500ms
     workload:
       actions:
         - name: Sleep
@@ -27,12 +25,6 @@ phases:
                 - name: Sleep
                   config:
                   duration: 1s
-                - name: HTTPResponse
-                  config:
-                  statusCodesWithProbabilities:
-                    "200": 0.8
-                    "500": 0.2
-                  # 404: 0.1
 
                 # Send request to payment service
                 - name: HTTPRequest
@@ -51,6 +43,6 @@ phases:
                       - name: HTTPResponse
                         config:
                         statusCodesWithProbabilities:
-                        "200": 0.5
-                        "500": 0.5
+                          "200": 0.5
+                          "500": 0.5
 

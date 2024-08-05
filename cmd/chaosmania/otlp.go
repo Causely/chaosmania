@@ -53,6 +53,8 @@ func initOTLP(logger *zap.Logger) func() {
 	// set global propagator to tracecontext (the default is no-op).
 	otel.SetTextMapPropagator(propagation.TraceContext{})
 
+	logger.Info("OTLP exporter initialized", zap.String("endpoint", os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT")), zap.String("service", os.Getenv("DEPLOYMENT_NAME")))
+
 	return func() {
 		err := tracerProvider.Shutdown(ctx)
 		if err != nil {

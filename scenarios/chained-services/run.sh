@@ -29,6 +29,13 @@ helm upgrade --install --namespace $NAMESPACE \
     --set commonLabels.app\.kubernetes\.io/part-of=$NAMESPACE \
     postgres oci://registry-1.docker.io/bitnamicharts/postgresql
 
+helm upgrade --install --namespace $NAMESPACE \
+    --set serviceMonitor.enabled=true \
+    --set config.datasource.host=postgres-postgresql \
+    --set config.datasource.password=postgres \
+    --set config.datasource.user=postgres \
+    postgres-exporter prometheus-community/prometheus-postgres-exporter
+
 echo "Deploying client"
 helm delete --namespace $NAMESPACE client
 helm upgrade --install --namespace $NAMESPACE \

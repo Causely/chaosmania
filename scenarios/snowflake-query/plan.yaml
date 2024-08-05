@@ -1,0 +1,21 @@
+---
+phases:
+  - name: Phase1
+    repeat: 5000
+
+    client:
+      workers:
+        - instances: 1
+          duration: 1h
+          delay: 5m
+
+    workload:
+      actions:
+        - name: SnowflakeQuery
+          config:
+            account:   "TODO"
+            user:      "TODO"
+            password:  "TODO"
+            database:  "SNOWFLAKE_SAMPLE_DATA"
+            warehouse: "COMPUTE_WH"
+            query:     "SELECT * FROM SNOWFLAKE_SAMPLE_DATA.TPCH_SF1.CUSTOMER LIMIT 1"

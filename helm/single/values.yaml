@@ -35,5 +35,41 @@ securityContext:
     - all
 
 otlp:
-  endpoint: "" # http://tempo.monitoring:4318
+  enabled: true
+  endpoint: http://alloy.monitoring:4318
   insecure: true
+
+services:
+  # - name: "kafka-producer"
+  #   type: kafka-producer
+  #   config:
+  #     peer_service: kafka
+  #     peer_namespace: chaosmania
+  #     brokers:
+  #       - "" # TODO
+  #     username: "" # TODO
+  #     password: "" # TODO
+  #     tls_enable: false
+  #     sasl_enable: false
+
+background_services:
+  # - name: "kafka-consumer"
+  #   type: kafka-consumer
+  #   config:
+  #     peer_service: kafka
+  #     peer_namespace: chaosmania
+  #     brokers:
+  #       - "" # TODO
+  #     username: "" # TODO
+  #     password: "" # TODO
+  #     tls_enable: true
+  #     sasl_enable: true
+  #     topic: test1
+  #     group: my-consumer-group
+  #     script: |
+  #       function run() {
+  #         var msg = ctx.get_message();
+  #         ctx.print("Received message: " + msg);
+  #       }
+
+enabled_background_services: []

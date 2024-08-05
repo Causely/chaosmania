@@ -21,3 +21,6 @@ venv/
 
 # Go workspace file
 go.work
+
+./scenarios/blackhole-access/conf/
+./external-services/node_modules/

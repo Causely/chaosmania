@@ -109,6 +109,7 @@ func (workload *Workload) Execute(ctx context.Context) error {
 			logger.FromContext(ctx).Warn("context error", zap.Error(ctx.Err()), zap.String("action", action.Name))
 		}
 
+		logger.FromContext(ctx).Info("executing action", zap.String("action", action.Name), zap.Any("config", action.Config))
 		err = a.Execute(ctx, action.Config)
 		if err != nil {
 			logger.FromContext(ctx).Warn("action execution failed", zap.Error(err), zap.String("action", action.Name))

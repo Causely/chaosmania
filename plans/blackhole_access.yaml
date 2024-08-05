@@ -1,0 +1,53 @@
+---
+phases:
+- client:
+    workers:
+      - instances: 1
+        duration: 60h
+        delay: 10000ms
+  name: Allocate memory
+  workload:
+    actions:
+      # Send request to recommendation (direct)
+      - name: HTTPRequest
+        config:
+          url: http://recommendation:8080
+          body:
+            actions:
+              - name: HTTPRequest
+                config:
+                  url: http://productcatalog:8080
+                  body:
+                    actions:
+                      - name: AllocateMemory
+                        config:
+                          sizeBytes: 100
+                          numAllocations: 100
+
+                      - name: Burn
+                        config:
+                          duration: 500ms
+                      # Product Catalog -> Send request to shipping.chaos (network endpoint, external route)
+                      # external (nodeJS) service sends request back into the cluster to the chaosmania shipping service
+                      - name: HTTPRequest
+                        config:
+                          url: http://shipping.blackhole-external:8080/shipment
+                          body:
+                            actions:
+                              - name: AllocateMemory
+                                config:
+                                  sizeBytes: 100
+                                  numAllocations: 100
+                              - name: HTTPRequest
+                                config:
+                                  url: http://ad:8080
+                                  body:
+                                    actions:
+                                      - name: AllocateMemory
+                                        config:
+                                          sizeBytes: 100
+                                          numAllocations: 100
+
+                                      - name: Burn
+                                        config:
+                                          duration: 500ms

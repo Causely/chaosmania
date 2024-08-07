@@ -18,6 +18,6 @@ helm delete --namespace ${NAMESPACE} client-show-video
 helm delete --namespace ${NAMESPACE} client-show-recommendations
 helm delete --namespace ${NAMESPACE} client-upload
 
-helm upgrade --install --create-namespace --namespace ${NAMESPACE} client-show-video ../../helm/client  --set chaos.plan="/scenarios/video/video_show_video.yaml" --set chaos.host=${CHAOS_HOST} --set image.tag=${IMAGE_TAG}
-helm upgrade --install --create-namespace --namespace ${NAMESPACE} client-show-recommendations ../../helm/client  --set chaos.plan="/scenarios/video/video_show_recommendations.yaml" --set chaos.host=${CHAOS_HOST} --set image.tag=${IMAGE_TAG}
-helm upgrade --install --create-namespace --namespace ${NAMESPACE} client-upload ../../helm/client  --set chaos.plan="/scenarios/video/video_upload.yaml" --set chaos.host=${CHAOS_HOST} --set image.tag=${IMAGE_TAG}
+helm upgrade --install --create-namespace --namespace ${NAMESPACE} client-show-video ../../helm/client  --set chaos.plan="/scenarios/cm-video-video_show_video.yaml" --set chaos.host=${CHAOS_HOST} --set image.tag=${IMAGE_TAG}
+helm upgrade --install --create-namespace --namespace ${NAMESPACE} client-show-recommendations ../../helm/client  --set chaos.plan="/scenarios/cm-video-video_show_recommendations.yaml" --set chaos.host=${CHAOS_HOST} --set image.tag=${IMAGE_TAG}
+helm upgrade --install --create-namespace --namespace ${NAMESPACE} client-upload ../../helm/client  --set chaos.plan="/scenarios/cm-video-video_upload.yaml" --set chaos.host=${CHAOS_HOST} --set image.tag=${IMAGE_TAG}

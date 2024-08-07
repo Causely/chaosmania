@@ -1,0 +1,48 @@
+---
+phases:
+  - name: Phase1
+    repeat: 1
+    client:
+      workers:
+        - instances: 1
+          duration: 10m
+          delay: 500ms
+    workload:
+      actions:
+        - name: Sleep
+          config:
+            duration: 1s
+
+        # Send request to order service
+        - name: HTTPRequest
+          config:
+            url: http://order-service:8080
+            body:
+              actions:    
+                - name: Burn
+                  config:
+                    duration: 10ms
+                - name: Sleep
+                  config:
+                  duration: 1s
+
+                # Send request to payment service
+                - name: HTTPRequest
+                  config:
+                    url: http://payment-service:8080
+                    body:
+                      actions:
+                      - name: AllocateMemory
+                        config:
+                          sizeBytes: 25000 # 25Kb
+                          numAllocations: 1
+                          leak: true
+                      - name: Burn
+                        config:
+                        duration: 500ms
+                      - name: HTTPResponse
+                        config:
+                        statusCodesWithProbabilities:
+                          "200": 0.5
+                          "500": 0.5
+

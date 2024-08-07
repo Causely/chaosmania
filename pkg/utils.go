@@ -67,24 +67,50 @@ func (duration *Duration) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
+//	func Convert(i interface{}) interface{} {
+//		switch x := i.(type) {
+//		case map[string]interface{}:
+//			m2 := map[string]interface{}{}
+//			for k, v := range x {
+//				m2[k] = Convert(v)
+//			}
+//			return m2
+//		case map[interface{}]interface{}:
+//			m2 := map[string]interface{}{}
+//			for k, v := range x {
+//				m2[k.(string)] = Convert(v)
+//			}
+//			return m2
+//		case []interface{}:
+//			for i, v := range x {
+//				x[i] = Convert(v)
+//			}
+//		}
+//		return i
+//	}
+//
+
+// Convert recursively converts map keys to strings and ensures types are consistent for JSON marshalling
 func Convert(i interface{}) interface{} {
 	switch x := i.(type) {
+	case map[interface{}]interface{}:
+		m2 := map[string]interface{}{}
+		for k, v := range x {
+			m2[fmt.Sprint(k)] = Convert(v)
+		}
+		return m2
 	case map[string]interface{}:
 		m2 := map[string]interface{}{}
 		for k, v := range x {
 			m2[k] = Convert(v)
 		}
 		return m2
-	case map[interface{}]interface{}:
-		m2 := map[string]interface{}{}
-		for k, v := range x {
-			m2[k.(string)] = Convert(v)
-		}
-		return m2
 	case []interface{}:
 		for i, v := range x {
 			x[i] = Convert(v)
 		}
+		return x
+	default:
+		return i
 	}
-	return i
 }

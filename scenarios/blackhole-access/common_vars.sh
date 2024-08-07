@@ -7,6 +7,8 @@ OTLP_COLLECTOR="http://opentelemetry-collector.default:4318"
 
 HOSTS_FILE="/etc/hosts"
 
+K8S_TEMPLATES_DIR="${SCRIPT_DIR}/conf/templates"
+
 COREDNS_DIR="${SCRIPT_DIR}/conf/coredns"
 INGRESS_DIR="${SCRIPT_DIR}/conf/ingress"
 COREDNS_CM_COPY="${COREDNS_DIR}/coredns-configmap.yaml"
@@ -16,6 +18,11 @@ COREDNS_ORIG_COPY="${COREDNS_DIR}/origin-coredns-configmap_${timestamp}.yaml"
 TMP_DIR="${SCRIPT_DIR}/conf/tmp"
 BLACKHOLE_PID_FILE="${TMP_DIR}/npm_process.pid"
 BLACKHOLE_LOG_FILE="${TMP_DIR}/npm_log.log"
+
+RUN_NODEJS="false"
+CUSTOM_COREDNS="false"
+CUSTOM_INGRESS="false"
+PLAN_YAML="/scenarios/cm-$NAMESPACE-plan.yaml"
 
 ######################################
 ## Script Utility Vars and Functions
@@ -32,7 +39,7 @@ CYAN="36"
 WHITE="37"
 
 # Text Colors
-PROMT_TXT=$RED
+PROMPT_TXT=$RED
 INFO_TXT=$YELLOW
 DETAIL_TXT=$CYAN
 EXAMPLE_TXT=$GREEN

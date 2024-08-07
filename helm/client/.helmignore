@@ -21,3 +21,7 @@
 .idea/
 *.tmproj
 .vscode/
+
+## Ignore dir containing nodejs/node_modules as `walk.go` will otherwise try to walk the entire node_modules tree
+## and attempt & fail to create a Secret from some files in there.
+/scenarios/blackhole-access/external-services

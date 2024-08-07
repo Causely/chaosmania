@@ -13,7 +13,7 @@ prompt_edit_hosts() {
     while true; do
         print_in_color $INFO_TXT "127.0.0.1 should contain hostname(s) of external services that you want to blackhole and K8s <service>.<namespace> return entries."
         print_in_color EXAMPLE_TXT "EXAMPLE:     127.0.0.1 shipping.blackhole-external shipping.blackhole-access"
-        print_in_color $PROMT_TXT "Do you want to open $HOSTS_FILE for editing? (yes/no): "
+        print_in_color $PROMPT_TXT "Do you want to open $HOSTS_FILE for editing? (yes/no): "
         read -r choice
         case "$choice" in
             yes|y|Y )
@@ -25,7 +25,7 @@ prompt_edit_hosts() {
                 break
                 ;;
             * )
-                print_in_color $PROMT_TXT "Invalid input. Please enter yes or no."
+                print_in_color $PROMPT_TXT "Invalid input. Please enter yes or no."
                 ;;
         esac
     done
@@ -56,7 +56,7 @@ prompt_edit_coredns() {
              fallthrough
            }"
         show_local_ip
-        print_in_color $PROMT_TXT "Do you want to create a copy of CoreDNS ConfigMap to editing? (yes/no): "
+        print_in_color $PROMPT_TXT "Do you want to create a copy of CoreDNS ConfigMap to editing? (yes/no): "
         read -r choice
         case "$choice" in
             yes|y|Y )
@@ -79,19 +79,19 @@ prompt_edit_coredns() {
 
 # Function to iterate over each YAML file in a directory and present a prompt
 process_ingress_files() {
-    local dir="${SCRIPT_DIR}/../../kubernetes/blackhole"
+    local dir="${K8S_TEMPLATES_DIR}"
 
     if [ -d "$dir" ]; then
-        for file in "$dir"/*ingress.yaml; do
+        for file in "$dir"/*_ingress.tpl; do
             if [ -f "$file" ]; then
                 filename=$(basename "$file")
                 while true; do
-                    print_in_color $PROMT_TXT "Do you want to include Ingress rule for $filename? (yes/no): "
+                    print_in_color $PROMPT_TXT "Do you want to include Ingress rule for $filename? (yes/no): "
                     read -r apply_choice
                     case "$apply_choice" in
                         yes|y|Y )
-                            print_in_color $INFO_TXT "copying file: $filename"
-                            ingress_copy="${INGRESS_DIR}/$filename"
+                            print_in_color $INFO_TXT "copying file: $filename to ${INGRESS_DIR}/$filename.yaml"
+                            ingress_copy="${INGRESS_DIR}/$filename.yaml"
                             cp "$file" "${ingress_copy}"
                             while true; do
                                 cat_file_in_color "$file" "$DETAIL_TXT"

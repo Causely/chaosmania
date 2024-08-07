@@ -2,7 +2,7 @@
 # Overview
 
 This scenario demonstrates a business application which contains a chain of application to application accesses, but
-where one of those accesses is to an external application/service outside of the Kubernetes cluster. The external service 
+where one of those accesses is to an external application/service outside from the Kubernetes cluster. The external service 
 then sends traffic back in to the cluster to another service. The external service(s) and application(s) are collectively 
 referred to as a "blackhole" in this scenario. The intent is to simulate a scenario such as an external 
 Application Load Balancer (ALB) which may not be monitored/observed by the Kubernetes cluster.
@@ -15,7 +15,8 @@ The default scenario plan should produce the following topology access graph:
 
 The key detail is that "productcatalog" actually accesses an external network endpoint "shipping.blackhole-external" 
 which then sends traffic out of the cluster to an external NodeJS proxy application which then forwards the request back
-into the cluster destined for the "shipping" service.
+into the cluster destined for the "shipping" service. Alternatively, you can run the same scenario where the external
+endpoint is, for example, a Load Balancer which directs traffic back in to the cluster to a different service.
 
 ----
 
@@ -25,18 +26,25 @@ into the cluster destined for the "shipping" service.
 2. Review the `common_vars.sh` file and modify any variables as needed.
    1. Most of the defaults should be fine to use.
 3. Run `./configure.sh` to interactively configure the scenario.
-   1. Prompt to edit your `/etc/hosts` file
-   2. Prompt to edit the `coredns` ConfigMap in the `kube-system` namespace.
-   3. Prompt to add Ingress rules to your K8s cluster. (default you need to add "shipping_ingress.yaml" Ingress rule)
+   1. Prompts to edit your `/etc/hosts` file
+   2. Prompts to edit the `coredns` ConfigMap in the `kube-system` namespace.
+   3. Prompt to add Ingress rules to your K8s cluster. (default locally you need to add "shipping_ingress.tpl.yaml" Ingress rule)
    4. The results of this will add files to the `scenarios/blackhole-access/conf` directory, used by the `run.sh` script
-4. Run `./run.sh` to start the scenario.
-   1. This will start the `blackhole-app` NodeJS service in your local environment.
-   2. It will also start the `boutique` and `single` applications in your K8s cluster.
-   3. Finally, it will start the `client` job with the plan to be executed.
+4. Run `./run.sh` to start the scenario:
+   1. The `run.sh` script without any args will do the following:
+       - Deploys the `boutique` and `single` helm charts to your namespace.
+       - Starts the `client` job with the plan to be executed.
+   2. For local dev `run.sh --run-external-svc="true" --custom-coredns="true" --custom-ingress="true"` 
+      - Deploys the `boutique` and `single` helm charts to your namespace.
+      - Starts the `client` job with the plan to be executed.
+      - Starts the `blackhole-app` NodeJS service in your local environment (as background process)
+      - Applies the custom `coredns` ConfigMap and Ingress rules to your K8s cluster, if it exists in `/conf/coredns/`
+      - Applies any `Ingress` rules to the namespace, if those yaml files exist in `/conf/ingress/` dir
+
 
 # Stopping the Scenario
 
-To cleanup all resources created by the scenario, run `./cleanup.sh`.
+To clean up all resources created by the scenario, run `./cleanup.sh`.
 
 ----
 
@@ -67,10 +75,10 @@ All external services are assumed to use the domain `*.blachole-external` and al
     }
     ```
 
-    There is a sample file at `kubernetes/blackhole/coredns-configmap.yaml`, however, it is probably best to copy and then edit
+    There is a sample file at `/scenarios/blackhole-access/conf/templates/coredns-configmap.tpl`, however, it is probably best to copy and then edit
     your existing ConfigMap to ensure you don't lose any existing configuration. 
-   - Make a copy of existing configmap: `kubectl -n kube-system get configmap coredns -o yaml > coredns-configmap.yaml`
-   - Add the custom.hosts block with the necessary details, then `kubectl -n kube-system apply -f coredns-configmap.yaml`.
+   - Make a copy of existing configmap: `kubectl -n kube-system get configmap coredns -o yaml > coredns-configmap.tpl.yaml`
+   - Add the custom.hosts block with the necessary details, then `kubectl -n kube-system apply -f coredns-configmap.tpl.yaml`.
 
 3. Your `/etc/hosts` file needs to resolve the external endpoints to your local host machine,
    and from external service back to the K8s Cluster. Example adds `shipping.blackhole-external` (from K8s) and `shipping.blackhole-access` (to K8s)

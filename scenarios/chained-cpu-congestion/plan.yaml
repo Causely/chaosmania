@@ -11,38 +11,36 @@ phases:
       actions:
         - name: Sleep
           config:
-            duration: 1s
-
+            duration: 500ms
         # Send request to order service
         - name: HTTPRequest
           config:
             url: http://order-service:8080
             body:
               actions:    
-                - name: Burn
-                  config:
-                    duration: 10ms
                 - name: Sleep
                   config:
-                  duration: 1s
-
+                  duration: 500ms
                 # Send request to payment service
                 - name: HTTPRequest
                   config:
                     url: http://payment-service:8080
                     body:
-                      actions:
-                      - name: AllocateMemory
-                        config:
-                          sizeBytes: 25000 # 25Kb
-                          numAllocations: 1
-                          leak: true
-                      - name: Burn
-                        config:
-                        duration: 500ms
-                      - name: HTTPResponse
-                        config:
-                        statusCodesWithProbabilities:
-                          "200": 0.5
-                          "500": 0.5
+                      actions:    
+                        - name: Sleep
+                          config:
+                          duration: 500ms
+                        - name: AllocateMemory
+                          config:
+                            sizeBytes: 25000 # 25Kb
+                            numAllocations: 1
+                            leak: true
+                        - name: Burn
+                          config:
+                          duration: 500ms
+                      # - name: HTTPResponse
+                      #   config:
+                      #   StatusCodesWithProbabilities:
+                      #     "200": 0.5
+                      #     "503": 0.5
 

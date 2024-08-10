@@ -22,14 +22,14 @@ helm upgrade --install --namespace $NAMESPACE \
     --set replicaCount=2 \
     --set resources.limits.cpu="500m"\
     --set business_application=$NAMESPACE \
-    payment $SCRIPT_DIR/../../helm/single 
+    payment-service $SCRIPT_DIR/../../helm/single 
 
 echo "Deploying orders"
 helm upgrade --install --namespace $NAMESPACE \
     --set image.tag=$IMAGE_TAG \
     --set replicaCount=2 \
     --set business_application=$NAMESPACE \
-    order $SCRIPT_DIR/../../helm/single 
+    order-service $SCRIPT_DIR/../../helm/single 
 
 echo "Deploying client"
 helm delete --namespace $NAMESPACE client

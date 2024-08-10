@@ -1,17 +1,17 @@
 ---
 phases:
   - name: Phase1
-    repeat: 1
+    repeat: 10
     client:
       workers:
-        - instances: 1
-          duration: 10m
-          delay: 500ms
+        - instances: 2
+          duration: 20m
+          delay: 5ms
     workload:
       actions:
         - name: Sleep
           config:
-            duration: 1s
+            duration: 500ms
 
         # Send request to order service
         - name: HTTPRequest
@@ -22,9 +22,6 @@ phases:
                 - name: Burn
                   config:
                     duration: 10ms
-                - name: Sleep
-                  config:
-                  duration: 1s
 
                 # Send request to payment service
                 - name: HTTPRequest
@@ -39,10 +36,6 @@ phases:
                           leak: true
                       - name: Burn
                         config:
-                        duration: 500ms
-                      - name: HTTPResponse
-                        config:
-                        statusCodesWithProbabilities:
-                          "200": 0.5
-                          "500": 0.5
+                          duration: 500ms
+
 

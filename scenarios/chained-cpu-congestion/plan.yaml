@@ -4,15 +4,14 @@ phases:
     repeat: 10
     client:
       workers:
-        - instances: 2
+        - instances: 1
           duration: 20m
           delay: 5ms
     workload:
       actions:
         - name: Sleep
           config:
-            duration: 500ms
-
+            duration: 50ms
         # Send request to order service
         - name: HTTPRequest
           config:
@@ -22,20 +21,14 @@ phases:
                 - name: Burn
                   config:
                     duration: 10ms
-
                 # Send request to payment service
                 - name: HTTPRequest
                   config:
                     url: http://payment-service:8080
                     body:
                       actions:
-                      - name: AllocateMemory
-                        config:
-                          sizeBytes: 25000 # 25Kb
-                          numAllocations: 1
-                          leak: true
                       - name: Burn
                         config:
-                          duration: 500ms
+                          duration: 1s
 
 

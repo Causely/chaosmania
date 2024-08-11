@@ -14,7 +14,7 @@ This scenario simulates high CPU load and memory leaks in the Payment Service, c
 
 ```plaintext
 scenarios/
-├── payment-service-cpu-overload/
+├── chained-cpu-congestion/
 │   ├── plan.yaml
 │   ├── run.sh
 │   ├── README.md
@@ -24,7 +24,7 @@ scenarios/
 
 - **plan.yaml**
 
-This file defines the ChaosMania plan for inducing high CPU load and memory leaks in the Payment Service. The plan includes actions to simulate inefficient algorithms and memory allocations that cause the CPU load to increase progressively over time and lead to memory leaks.
+This file defines the ChaosMania plan for inducing high CPU load and memory leaks in the Payment Service. The plan includes actions to simulate inefficient algorithms that cause the CPU load to increase progressively over time .
 
 - **prun.sh**
 
@@ -51,20 +51,6 @@ This script sets up the environment, deploys the necessary services, and runs th
 ┌───────────────────┐
 │                   │
 │ Frontend Service  │
-│ (Slow Responses)  │
+│   │
 └───────────────────┘
 ```
-
-## Monitoring Metrics
-
-**Order Service**
-
-	•	High Latency: Increased response time for order processing requests.
-	•	Time Out Errors: Higher rate of timeout errors in order processing requests.
-	•	Increased Queue Length: Number of pending orders or length of order processing queue.
-
-**Frontend Service**
-
-	•	Slow Checkout Process: Increased response time for checkout-related API calls.
-	•	Error Messages: Higher rate of error responses during the checkout process.
-	•	Unresponsive UI: Increased frontend page load times and interaction response times.

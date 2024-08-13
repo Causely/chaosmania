@@ -4,7 +4,7 @@ phases:
     repeat: 10
     client:
       workers:
-        - instances: 1
+        - instances: 2
           duration: 20m
           delay: 5ms
     workload:

@@ -20,7 +20,7 @@ echo "Deploying payment"
 helm upgrade --install --namespace $NAMESPACE \
     --set image.tag=$IMAGE_TAG \
     --set replicaCount=1 \
-    --set resources.limits.cpu="500m"\
+    --set resources.limits.cpu="1000m"\
     --set business_application=$NAMESPACE \
     payment-service $SCRIPT_DIR/../../helm/single 
 

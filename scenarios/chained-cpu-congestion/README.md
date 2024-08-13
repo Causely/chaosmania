@@ -24,33 +24,35 @@ scenarios/
 
 - **plan.yaml**
 
-This file defines the ChaosMania plan for inducing high CPU load and memory leaks in the Payment Service. The plan includes actions to simulate inefficient algorithms that cause the CPU load to increase progressively over time .
+This file defines the ChaosMania plan for inducing high CPU load in the Payment Service. The plan includes actions to simulate inefficient algorithms that cause the CPU load to increase progressively over time .
 
-- **prun.sh**
+- **run.sh**
 
 This script sets up the environment, deploys the necessary services, and runs the ChaosMania scenario defined in the plan.yaml file.
 
-## Error Propagation Schema
+## Data Flow Schema
 
 ```plaintext
+
 ┌───────────────────┐
-│                   │
-│ Payment Service   │
-│ (High CPU Load    │
-│ and Memory Leak)  │
+│ Client            │
 └───────────────────┘
          │
          ▼
 ┌───────────────────┐
-│                   │
+│ Frontend Service  │
+└───────────────────┘
+         │
+         ▼
+┌───────────────────┐
 │ Order Service     │
 │ (Delayed Orders)  │
 └───────────────────┘
          │
          ▼
 ┌───────────────────┐
-│                   │
-│ Frontend Service  │
-│   │
+│ Payment Service   │
+│ (High CPU Load)   │
 └───────────────────┘
+
 ```

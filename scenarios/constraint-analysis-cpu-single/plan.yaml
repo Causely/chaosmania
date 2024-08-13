@@ -1,0 +1,44 @@
+phases:
+  - name: PeriodicLoad
+    repeat: 5000
+
+    client:
+      workers:
+        - instances: 5
+          duration: 1m
+          delay: 10ms
+        - instances: 10
+          duration: 1m
+          delay: 10ms
+        - instances: 20
+          duration: 1m
+          delay: 10ms
+        - instances: 30
+          duration: 1m
+          delay: 10ms
+        - instances: 40
+          duration: 2m
+          delay: 10ms
+        - instances: 30
+          duration: 2m
+          delay: 10ms
+        - instances: 20
+          duration: 1m
+          delay: 10ms
+        - instances: 10
+          duration: 1m
+          delay: 10ms
+        - instances: 5
+          duration: 1m
+          delay: 10ms
+
+    workload:
+      actions:
+        - name: HTTPRequest
+          config:
+            url: http://payment:8080
+            body:
+              actions:
+                - name: Burn
+                  config:
+                    duration: 50ms

@@ -12,7 +12,7 @@ kubectl label namespace $NAMESPACE istio-injection=enabled --overwrite
 echo "Deploying frontend"
 helm upgrade --install --namespace $NAMESPACE \
     --set image.tag=$IMAGE_TAG \
-    --set replicaCount=1 \
+    --set replicaCount=2 \
     --set business_application=$NAMESPACE \
     frontend $SCRIPT_DIR/../../helm/single 
 

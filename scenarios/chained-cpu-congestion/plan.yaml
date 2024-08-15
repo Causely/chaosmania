@@ -17,7 +17,7 @@ phases:
               actions:    
                 - name: Sleep
                   config:
-                    duration: 10ms
+                    duration: 400ms
                 # Send request to payment service
                 - name: HTTPRequest
                   config:
@@ -26,7 +26,7 @@ phases:
                       actions:    
                         - name: Sleep
                           config:
-                            duration: 10ms
+                            duration: 400ms
 
   - name: Phase2
     repeat: 1
@@ -34,12 +34,12 @@ phases:
       workers:
         - instances: 3
           duration: 15m
-          delay: 50ms
+          delay: 5ms
     workload:
       actions:
         - name: Sleep
           config:
-            duration: 500ms
+            duration: 10ms
         # Send request to order service
         - name: HTTPRequest
           config:
@@ -48,7 +48,7 @@ phases:
               actions:    
                 - name: Sleep
                   config:
-                    duration: 500ms
+                    duration: 10ms
                 # Send request to payment service
                 - name: HTTPRequest
                   config:

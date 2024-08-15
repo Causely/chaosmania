@@ -27,7 +27,7 @@ helm upgrade --install --namespace $NAMESPACE \
 echo "Deploying orders"
 helm upgrade --install --namespace $NAMESPACE \
     --set image.tag=$IMAGE_TAG \
-    --set replicaCount=3 \
+    --set replicaCount=2 \
     --set business_application=$NAMESPACE \
     order-service $SCRIPT_DIR/../../helm/single 
 

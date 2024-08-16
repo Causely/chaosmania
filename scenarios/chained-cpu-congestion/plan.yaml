@@ -1,0 +1,61 @@
+---
+phases:
+  - name: Phase1
+    repeat: 1
+    client:
+      workers:
+        - instances: 1
+          duration: 8m
+          delay: 5ms
+    workload:
+      actions:
+        # Send request to order service
+        - name: HTTPRequest
+          config:
+            url: http://order-service:8080
+            body:
+              actions:    
+                - name: Sleep
+                  config:
+                    duration: 400ms
+                # Send request to payment service
+                - name: HTTPRequest
+                  config:
+                    url: http://payment-service:8080
+                    body:
+                      actions:    
+                        - name: Sleep
+                          config:
+                            duration: 400ms
+
+  - name: Phase2
+    repeat: 1
+    client:
+      workers:
+        - instances: 3
+          duration: 15m
+          delay: 5ms
+    workload:
+      actions:
+        - name: Sleep
+          config:
+            duration: 10ms
+        # Send request to order service
+        - name: HTTPRequest
+          config:
+            url: http://order-service:8080
+            body:
+              actions:    
+                - name: Sleep
+                  config:
+                    duration: 10ms
+                # Send request to payment service
+                - name: HTTPRequest
+                  config:
+                    url: http://payment-service:8080
+                    body:
+                      actions:
+                      - name: Burn
+                        config:
+                          duration: 1s
+

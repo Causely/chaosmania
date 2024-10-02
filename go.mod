@@ -17,7 +17,7 @@ require (
 	github.com/snowflakedb/gosnowflake v1.11.1
 	github.com/streadway/amqp v1.1.0
 	github.com/urfave/cli/v2 v2.27.4
-	go.mongodb.org/mongo-driver v1.17.0
+	go.mongodb.org/mongo-driver v1.17.1
 	go.nhat.io/otelsql v0.14.0
 	go.opentelemetry.io/contrib/instrumentation/go.mongodb.org/mongo-driver/mongo/otelmongo v0.55.0
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.55.0

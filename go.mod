@@ -14,7 +14,7 @@ require (
 	github.com/redis/go-redis/extra/redisotel/v9 v9.5.3
 	github.com/redis/go-redis/v9 v9.6.1
 	github.com/rotisserie/eris v0.5.4
-	github.com/snowflakedb/gosnowflake v1.11.1
+	github.com/snowflakedb/gosnowflake v1.11.2
 	github.com/streadway/amqp v1.1.0
 	github.com/urfave/cli/v2 v2.27.4
 	go.mongodb.org/mongo-driver v1.17.0

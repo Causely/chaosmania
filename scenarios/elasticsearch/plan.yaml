@@ -1,0 +1,34 @@
+---
+phases:
+  - name: Phase1
+    repeat: 5000
+
+    client:
+      workers:
+        - instances: 1
+          duration: 1h
+          delay: 10s
+
+    workload:
+      actions:
+        - name: ElasticInsert
+          config:
+            address: TODO
+            index: test-index
+            apikey: TODO
+            document:
+              title: example
+
+        - name: ElasticQuery
+          config:
+            address: TODO
+            index: test-index
+            apikey: TODO
+            query: |
+              {
+                "query": {
+                  "match": {
+                    "title": "example"
+                  }
+                }
+              }

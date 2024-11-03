@@ -1,0 +1,115 @@
+#  Portfolio Management Service: Manages clients’ investment portfolios, including assets, allocations, and rebalancing strategies.
+#  Financial Planning Service: Allows advisors to create and manage personalized financial plans for clients based on goals, risk tolerance, and time horizon.
+#  Transaction Processing Service: Processes buy/sell orders and manages the settlement of transactions, working with third-party custodians.
+#  Risk & Compliance Service: Monitors portfolios for regulatory compliance and potential risks, ensuring adherence to financial regulations.
+#  Analytics Service: Analyzes portfolio performance, market trends, and client behaviors to generate insights for advisors and clients.
+#  Reporting Service: Generates various reports (e.g., portfolio statements, performance reports, compliance reports) for clients and advisors.
+---
+phases:
+  - name: Just load
+
+    client:
+      workers:
+        - instances: 10
+          duration: 60h
+          delay: 10ms
+
+    workload:
+      actions:
+        # Send request to planning
+        - name: HTTPRequest
+          config:
+            url: http://planning:8080
+            body:
+              actions:
+                - name: AllocateMemory
+                  config:
+                    sizeBytes: 1000
+                    numAllocations: 100
+                    leak: true
+
+        # Send request to risk
+        - name: HTTPRequest
+          config:
+            url: http://risk:8080
+            body:
+              actions:
+                - name: PostgresqlQuery
+                  config:
+                    query: SELECT pg_sleep(0.2);
+                    maxopen: 5
+                    maxidle: 10
+
+                - name: RedisCommand
+                  config:
+                    address: redis:6379
+                    command: lpush
+                    args:
+                      - key1
+                      - value1
+
+        # Send request to analytics
+        - name: HTTPRequest
+          config:
+            url: http://analytics:8080
+            body:
+              actions:
+                - name: RedisCommand
+                  config:
+                    address: redis:6379
+                    command: lpop
+                    args:
+                      - key1
+
+                - name: AllocateMemory
+                  config:
+                    sizeBytes: 100
+                    numAllocations: 100
+
+        # Send request to transaction
+        - name: HTTPRequest
+          config:
+            url: http://transaction:8080
+            body:
+              actions:
+                - name: AllocateMemory
+                  config:
+                    sizeBytes: 100
+                    numAllocations: 100
+
+                - name: Burn
+                  config:
+                    duration: 200ms
+
+        # Send request to reporting
+        - name: HTTPRequest
+          config:
+            url: http://reporting:8080
+            body:
+              actions:
+                # Execute arbitrary postgresql query
+                - name: PostgresqlQuery
+                  config:
+                    query: SELECT pg_sleep(0.1);
+                    maxopen: 5
+                    maxidle: 10
+
+                # Send request to portfolio
+                - name: HTTPRequest
+                  config:
+                    url: http://portfolio:8080
+                    body:
+                      actions:
+                        # Lock a mutex. Locks are identified by `id`.
+                        - name: GlobalMutexLock
+                          config:
+                            id: global_lock
+
+                        - name: Sleep
+                          config:
+                            duration: 500ms
+
+                        # Unlock the mutex.
+                        - name: GlobalMutexUnlock
+                          config:
+                            id: global_lock

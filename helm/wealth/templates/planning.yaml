@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: planning
+  labels:
+    {{include "common.labels" "planning" | nindent 4}}
+spec:
+  selector:
+    matchLabels:
+      {{include "common.labels" "planning" | nindent 6}}
+  template:
+    metadata:
+      labels:
+        {{include "common.labels" "planning" | nindent 8}}
+    spec:
+      containers: 
+      {{include "chaosmania.container" . | nindent 6}}
+      volumes:
+      {{include "common.volumes" . | nindent 6}}
+---
+{{ include "chaosmania.service" "planning" }}

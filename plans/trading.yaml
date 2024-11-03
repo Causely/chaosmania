@@ -1,0 +1,115 @@
+#  Order Management Service (OMS): Handles order creation, modifications, cancellations, and tracks order states. Routes orders to the appropriate execution venues or exchanges.
+#  Execution Management Service (EMS): Executes orders, handles order book interactions, and provides execution reports. It connects to various liquidity providers and exchanges.
+#  Pricing Service: Aggregates prices from multiple sources (e.g., market data providers or exchanges) to provide real-time quotes for various instruments.
+#  Risk Management Service: Enforces trading limits, monitors real-time exposure, and applies pre-trade risk checks to prevent excessive risks.
+#  Position Management Service: Tracks real-time positions for each trader, calculates profit and loss, and supports reporting.
+#  Trade Reporting Service: Tracks trades and generates real-time reports for regulatory and compliance requirements.
+---
+phases:
+  - name: Just load
+
+    client:
+      workers:
+        - instances: 10
+          duration: 60h
+          delay: 10ms
+
+    workload:
+      actions:
+        # Send request to pricing
+        - name: HTTPRequest
+          config:
+            url: http://pricing:8080
+            body:
+              actions:
+                - name: AllocateMemory
+                  config:
+                    sizeBytes: 1000
+                    numAllocations: 100
+                    leak: true
+
+        # Send request to risk
+        - name: HTTPRequest
+          config:
+            url: http://risk:8080
+            body:
+              actions:
+                - name: AllocateMemory
+                  config:
+                    sizeBytes: 100
+                    numAllocations: 100
+
+                - name: Burn
+                  config:
+                    duration: 200ms
+
+        # Send request to order
+        - name: HTTPRequest
+          config:
+            url: http://order:8080
+            body:
+              actions:
+                - name: PostgresqlQuery
+                  config:
+                    query: SELECT pg_sleep(0.2);
+                    maxopen: 5
+                    maxidle: 10
+
+                - name: RedisCommand
+                  config:
+                    address: redis:6379
+                    command: lpush
+                    args:
+                      - key1
+                      - value1
+
+        # Send request to execution
+        - name: HTTPRequest
+          config:
+            url: http://execution:8080
+            body:
+              actions:
+                - name: RedisCommand
+                  config:
+                    address: redis:6379
+                    command: lpop
+                    args:
+                      - key1
+
+                - name: AllocateMemory
+                  config:
+                    sizeBytes: 100
+                    numAllocations: 100
+
+        # Send request to position
+        - name: HTTPRequest
+          config:
+            url: http://position:8080
+            body:
+              actions:
+                # Execute arbitrary postgresql query
+                - name: PostgresqlQuery
+                  config:
+                    query: SELECT pg_sleep(0.1);
+                    maxopen: 5
+                    maxidle: 10
+
+                # Send request to trade
+                - name: HTTPRequest
+                  config:
+                    url: http://trade:8080
+                    body:
+                      actions:
+                        # Lock a mutex. Locks are identified by `id`.
+                        - name: GlobalMutexLock
+                          config:
+                            id: global_lock
+
+                        - name: Sleep
+                          config:
+                            duration: 500ms
+
+                        # Unlock the mutex.
+                        - name: GlobalMutexUnlock
+                          config:
+                            id: global_lock

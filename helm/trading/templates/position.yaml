@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: position
+  labels:
+    {{include "common.labels" "position" | nindent 4}}
+spec:
+  selector:
+    matchLabels:
+      {{include "common.labels" "position" | nindent 6}}
+  template:
+    metadata:
+      labels:
+        {{include "common.labels" "position" | nindent 8}}
+    spec:
+      containers:
+      {{include "chaosmania.container" . | nindent 8}}
+      volumes:
+      {{include "common.volumes" . | nindent 6}}
+---
+{{ include "chaosmania.service" "position" }}

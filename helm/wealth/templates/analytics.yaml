@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: analytics
+  labels:
+    {{include "common.labels" "analytics" | nindent 4}}
+spec:
+  selector:
+    matchLabels:
+      {{include "common.labels" "analytics" | nindent 6}}
+  template:
+    metadata:
+      labels:
+        {{include "common.labels" "analytics" | nindent 8}}
+    spec:
+      containers:
+      {{include "chaosmania.container" . | nindent 6}}
+      volumes:
+      {{include "common.volumes" . | nindent 6}}
+---
+{{ include "chaosmania.service" "analytics" }}

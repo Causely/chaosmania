@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: risk
+  labels:
+    {{include "common.labels" "risk" | nindent 4}}
+spec:
+  selector:
+    matchLabels:
+      {{include "common.labels" "risk" | nindent 6}}
+  template:
+    metadata:
+      labels:
+        {{include "common.labels" "risk" | nindent 8}}
+    spec:
+      containers:
+      {{include "chaosmania.container" . | nindent 8}}
+      volumes:
+      {{include "common.volumes" . | nindent 6}}
+---
+{{ include "chaosmania.service" "risk" }}

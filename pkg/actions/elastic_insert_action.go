@@ -3,8 +3,10 @@ package actions
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"net/http"
 
 	"github.com/Causely/chaosmania/pkg"
 	"github.com/Causely/chaosmania/pkg/logger"
@@ -19,6 +21,7 @@ type ElasticInsertConfig struct {
 	Index    string         `json:"index"`
 	Address  string         `json:"address"`
 	ApiKey   string         `json:"apikey"`
+	Insecure bool           `json:"insecure"`
 }
 
 func (a *ElasticInsert) Execute(ctx context.Context, cfg map[string]any) error {
@@ -27,11 +30,17 @@ func (a *ElasticInsert) Execute(ctx context.Context, cfg map[string]any) error {
 		logger.FromContext(ctx).Warn("failed to parse config", zap.Error(err))
 		return err
 	}
-
-	es, err := elasticsearch.NewClient(elasticsearch.Config{
+	esConfig := elasticsearch.Config{
 		Addresses: []string{config.Address},
 		APIKey:    config.ApiKey,
-	})
+	}
+	if config.Insecure {
+		esConfig.Transport = &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		}
+	}
+	es, err := elasticsearch.NewClient(esConfig)
+
 	if err != nil {
 		logger.FromContext(ctx).Warn("failed to create client", zap.Error(err))
 		return err

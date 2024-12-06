@@ -12,7 +12,7 @@
   "type": "module",
   "dependencies": {
     "body-parser": "^1.20.2",
-    "express": "^4.21.1",
+    "express": "^4.21.2",
     "http-proxy": "^1.18.1"
   }
 }

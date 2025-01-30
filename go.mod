@@ -15,7 +15,7 @@ require (
 	github.com/redis/go-redis/extra/redisotel/v9 v9.7.0
 	github.com/redis/go-redis/v9 v9.7.0
 	github.com/rotisserie/eris v0.5.4
-	github.com/snowflakedb/gosnowflake v1.12.1
+	github.com/snowflakedb/gosnowflake v1.13.0
 	github.com/streadway/amqp v1.1.0
 	github.com/urfave/cli/v2 v2.27.5
 	go.mongodb.org/mongo-driver v1.17.2
@@ -87,7 +87,7 @@ require (
 	github.com/ebitengine/purego v0.6.0-alpha.5 // indirect
 	github.com/elastic/elastic-transport-go/v8 v8.6.0 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
-	github.com/gabriel-vasile/mimetype v1.4.2 // indirect
+	github.com/gabriel-vasile/mimetype v1.4.7 // indirect
 	github.com/go-ini/ini v1.67.0 // indirect
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect

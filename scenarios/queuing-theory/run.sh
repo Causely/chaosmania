@@ -3,7 +3,7 @@
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 
 IMAGE_REPO=quay.io/causely/chaosmania
-IMAGE_TAG=steffen
+IMAGE_TAG=latest
 NAMESPACE=cm-queuing-theory
 
 kubectl create namespace $NAMESPACE

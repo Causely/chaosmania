@@ -19,5 +19,6 @@ phases:
                   "key": "value",
                 });
                 data_broker.produce(ctx.ctx, "test1", msg);
+                ctx.print("done")
             }
         name: Script

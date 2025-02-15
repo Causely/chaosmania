@@ -1,8 +1,6 @@
 ---
 phases:
   - name: Phase1
-    repeat: 5000
-
     client:
       workers:
         - instances: 10
@@ -14,3 +12,16 @@ phases:
         - name: Burn
           config:
             duration: 500ms
+
+  - name: Phase2
+    client:
+      workers:
+        - instances: 10
+          duration: 1h
+          delay: 500ms
+
+    workload:
+      actions:
+        - name: Burn
+          config:
+            duration: 1000ms

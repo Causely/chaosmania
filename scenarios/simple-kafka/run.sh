@@ -57,6 +57,23 @@ helm upgrade --install --namespace $NAMESPACE \
     consumer $SCRIPT_DIR/../../helm/single 
 
 echo
+echo "Deploying exporter"
+helm upgrade --install --namespace $NAMESPACE \
+    --set prometheus.serviceMonitor.enabled=true \
+    --set kafkaServer[0]=my-kafka-controller-0.my-kafka-controller-headless.$NAMESPACE.svc.cluster.local:9092 \
+    --set sasl.enabled=true \
+    --set sasl.scram.enabled=true \
+    --set sasl.scram.mechanism=scram-sha256 \
+    --set sasl.scram.username=user1 \
+    --set sasl.scram.password="$PASSWORD" \
+    --set prometheus.serviceMonitor.enabled=true \
+    --set prometheus.serviceMonitor.namespace=$NAMESPACE \
+    --set prometheus.serviceMonitor.relabelings[0].action=replace \
+    --set prometheus.serviceMonitor.relabelings[0].replacement=my-kafka.$NAMESPACE.svc.cluster.local:9092 \
+    --set prometheus.serviceMonitor.relabelings[0].targetLabel=target \
+    kafka-exporter prometheus-community/prometheus-kafka-exporter
+
+echo
 echo "Deploying client"
 helm delete --namespace $NAMESPACE client
 helm upgrade --install --namespace $NAMESPACE \

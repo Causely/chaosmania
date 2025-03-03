@@ -3,7 +3,7 @@ module github.com/Causely/chaosmania
 go 1.23
 
 require (
-	github.com/IBM/sarama v1.45.0
+	github.com/IBM/sarama v1.45.1
 	github.com/dop251/goja v0.0.0-20231027120936-b396bb4c349d
 	github.com/elastic/go-elasticsearch/v8 v8.17.1
 	github.com/go-redis/redis/v8 v8.11.5

@@ -1,6 +1,6 @@
 module github.com/Causely/chaosmania
 
-go 1.23.0
+go 1.24.0
 
 require (
 	github.com/IBM/sarama v1.45.1

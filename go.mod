@@ -13,7 +13,7 @@ require (
 	github.com/minio/minio-go/v7 v7.0.88
 	github.com/prometheus/client_golang v1.21.1
 	github.com/redis/go-redis/extra/redisotel/v9 v9.7.1
-	github.com/redis/go-redis/v9 v9.7.1
+	github.com/redis/go-redis/v9 v9.7.3
 	github.com/rotisserie/eris v0.5.4
 	github.com/snowflakedb/gosnowflake v1.13.1
 	github.com/streadway/amqp v1.1.0

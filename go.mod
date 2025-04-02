@@ -1,7 +1,6 @@
 module github.com/Causely/chaosmania
 
 go 1.24.0
-
 require (
 	github.com/IBM/sarama v1.45.1
 	github.com/dop251/goja v0.0.0-20231027120936-b396bb4c349d
@@ -15,7 +14,7 @@ require (
 	github.com/redis/go-redis/extra/redisotel/v9 v9.7.3
 	github.com/redis/go-redis/v9 v9.7.3
 	github.com/rotisserie/eris v0.5.4
-	github.com/snowflakedb/gosnowflake v1.13.1
+	github.com/snowflakedb/gosnowflake v1.13.2
 	github.com/streadway/amqp v1.1.0
 	github.com/urfave/cli/v2 v2.27.6
 	go.mongodb.org/mongo-driver v1.17.3

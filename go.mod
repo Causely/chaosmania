@@ -1,12 +1,13 @@
 module github.com/Causely/chaosmania
 
 go 1.24.0
+
 require (
 	github.com/IBM/sarama v1.45.1
 	github.com/dop251/goja v0.0.0-20231027120936-b396bb4c349d
 	github.com/elastic/go-elasticsearch/v8 v8.17.1
 	github.com/go-redis/redis/v8 v8.11.5
-	github.com/go-sql-driver/mysql v1.9.1
+	github.com/go-sql-driver/mysql v1.9.2
 	github.com/google/uuid v1.6.0
 	github.com/lib/pq v1.10.9
 	github.com/minio/minio-go/v7 v7.0.89

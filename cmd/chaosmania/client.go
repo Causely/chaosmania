@@ -186,7 +186,7 @@ loop:
 	}
 }
 
-func executePhase(logger *zap.Logger, phase actions.Phase, raw map[string]any, host string, port int64, header map[string]string) error {
+func executePhase(logger *zap.Logger, phase actions.Phase, raw map[string]any, host string, port int64, header map[string]string, ctx context.Context) error {
 	logger.Info("")
 	logger.Info(fmt.Sprintf("Starting phase: %s", phase.Name))
 
@@ -210,8 +210,7 @@ func executePhase(logger *zap.Logger, phase actions.Phase, raw map[string]any, h
 		var wg sync.WaitGroup
 		wg.Add(int(w.Instances))
 
-		ctx := context.Background()
-		ctx, cancel := context.WithTimeout(ctx, w.Duration)
+		workerCtx, cancel := context.WithTimeout(ctx, w.Duration)
 		defer cancel()
 
 		payloadBytes, err := json.Marshal(raw["workload"])
@@ -222,7 +221,7 @@ func executePhase(logger *zap.Logger, phase actions.Phase, raw map[string]any, h
 		for i := 0; i < int(w.Instances); i++ {
 			go func(stats *statistics) {
 				defer wg.Done()
-				runWorker(logger, stats, w.Timeout, ctx, w.Delay, host, port, payloadBytes, header)
+				runWorker(logger, stats, w.Timeout, workerCtx, w.Delay, host, port, payloadBytes, header)
 			}(&stats)
 		}
 
@@ -233,6 +232,7 @@ func executePhase(logger *zap.Logger, phase actions.Phase, raw map[string]any, h
 			var last statisticCounters
 			interval := 10
 			t := time.NewTicker(time.Duration(interval) * time.Second)
+			defer t.Stop()
 
 			for {
 				select {
@@ -257,7 +257,7 @@ func executePhase(logger *zap.Logger, phase actions.Phase, raw map[string]any, h
 
 					last = current
 					logger.Info(fmt.Sprintf("%.1f req/s, avg latency %v, %v errors, %v ok", float64(requests)/float64(interval), latency, errors, ok))
-				case <-ctx.Done():
+				case <-workerCtx.Done():
 					return
 				}
 			}
@@ -332,14 +332,32 @@ func command_client(logger *zap.Logger, ctx *cli.Context) error {
 
 	logger.Info(fmt.Sprintf("Total estimated execution time: %s", time.Duration(totalSeconds*int(time.Second))))
 
+	// Create a root context that we can cancel
+	rootCtx, rootCancel := context.WithCancel(context.Background())
+	defer rootCancel()
+
 	for i, phase := range plan.Phases {
 		for j := 0; j < int(phase.Repeat); j++ {
-			err := executePhase(logger, phase, raw["phases"].([]any)[i].(map[string]any), host, port, headers)
+			// Create a phase-specific context that will be cancelled when the phase is done
+			phaseCtx, phaseCancel := context.WithCancel(rootCtx)
+			defer phaseCancel()
+
+			err := executePhase(logger, phase, raw["phases"].([]any)[i].(map[string]any), host, port, headers, phaseCtx)
 			if err != nil {
+				logger.Error("Phase execution failed", zap.Error(err))
 				return err
 			}
+
+			// Ensure all goroutines from this phase are cleaned up
+			phaseCancel()
 		}
 	}
+
+	// Log completion and ensure all resources are cleaned up
+	logger.Info("All phases completed successfully")
+
+	// Give a small grace period for any final cleanup
+	time.Sleep(2 * time.Second)
 
 	return nil
 }

@@ -18,6 +18,7 @@ helm upgrade --install --namespace $NAMESPACE \
     --set image.tag=$IMAGE_TAG \
     --set replicaCount=2 \
     --set business_application=$SCENARIO \
+    --set otlp.enabled=$OTLP_ENABLED \
     frontend $SCRIPT_DIR/../../helm/single 
 
 echo "Deploying payment"
@@ -25,6 +26,7 @@ helm upgrade --install --namespace $NAMESPACE \
     --set image.tag=$IMAGE_TAG \
     --set replicaCount=2 \
     --set business_application=$SCENARIO \
+    --set otlp.enabled=$OTLP_ENABLED \
     payment $SCRIPT_DIR/../../helm/single 
 
 echo "Deploying DB"
@@ -48,5 +50,6 @@ helm upgrade --install --namespace $NAMESPACE \
     --set chaos.host=frontend \
     --set chaos.plan=/scenarios/$SCENARIO-plan.yaml \
     --set business_application=$SCENARIO \
+    --set otlp.enabled=$OTLP_ENABLED \
     client $SCRIPT_DIR/../../helm/client
 

@@ -18,6 +18,7 @@ helm upgrade --install --namespace $NAMESPACE \
     --set resources.limits.memory=256Mi \
     --set replicaCount=1 \
     --set business_application=$SCENARIO \
+    --set otlp.enabled=$OTLP_ENABLED \
     single $SCRIPT_DIR/../../helm/single 
 
 helm delete --namespace $NAMESPACE client
@@ -25,5 +26,6 @@ helm upgrade --install --namespace $NAMESPACE \
     --set image.tag=$IMAGE_TAG \
     --set chaos.plan=/scenarios/$SCENARIO-plan.yaml \
     --set business_application=$SCENARIO \
+    --set otlp.enabled=$OTLP_ENABLED \
     client $SCRIPT_DIR/../../helm/client
 

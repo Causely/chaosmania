@@ -37,6 +37,7 @@ helm upgrade --install --namespace $NAMESPACE \
     --set services[0].config.password="$PASSWORD" \
     --set services[0].config.tls_enable=false \
     --set services[0].config.sasl_enable=true \
+    --set otlp.enabled=$OTLP_ENABLED \
     producer $SCRIPT_DIR/../../helm/single 
 
 echo
@@ -58,6 +59,7 @@ helm upgrade --install --namespace $NAMESPACE \
     --set background_services[0].config.group=my-consumer-group \
     --set background_services[0].config.script="function run() { var msg = ctx.get_message(); ctx.print('Received message: ' + msg); }" \
     --set enabled_background_services[0]="kafka-consumer" \
+    --set otlp.enabled=$OTLP_ENABLED \
     consumer $SCRIPT_DIR/../../helm/single 
 
 echo
@@ -85,5 +87,6 @@ helm upgrade --install --namespace $NAMESPACE \
     --set chaos.host=producer \
     --set chaos.plan=/scenarios/$SCENARIO-plan.yaml \
     --set business_application=$SCENARIO \
+    --set otlp.enabled=$OTLP_ENABLED \
     client $SCRIPT_DIR/../../helm/client
 

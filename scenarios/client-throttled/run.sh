@@ -18,6 +18,7 @@ helm upgrade --install --namespace $NAMESPACE \
     --set resources.limits.cpu="500m"\
     --set replicaCount=3 \
     --set business_application=$SCENARIO \
+    --set otlp.enabled=$OTLP_ENABLED \
     single $SCRIPT_DIR/../../helm/single 
 
 helm delete --namespace $NAMESPACE client-throttled
@@ -25,6 +26,7 @@ helm upgrade --install --namespace $NAMESPACE \
     --set image.tag=$IMAGE_TAG \
     --set chaos.plan=/scenarios/$SCENARIO-throttled.yaml \
     --set business_application=$SCENARIO \
+    --set otlp.enabled=$OTLP_ENABLED \
     client-throttled $SCRIPT_DIR/../../helm/client
 
 helm delete --namespace $NAMESPACE client-not-throttled
@@ -32,5 +34,6 @@ helm upgrade --install --namespace $NAMESPACE \
     --set image.tag=$IMAGE_TAG \
     --set chaos.plan=/scenarios/$SCENARIO-not_throttled.yaml \
     --set business_application=$SCENARIO \
+    --set otlp.enabled=$OTLP_ENABLED \
     client-not-throttled $SCRIPT_DIR/../../helm/client
 

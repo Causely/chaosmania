@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/signal"
 	"regexp"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -34,6 +35,14 @@ var processedTransactionDuration = promauto.NewHistogram(prometheus.HistogramOpt
 	Help: "The processed transactions duration",
 })
 
+var httpRequestsTotal = promauto.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: "http_requests_total",
+		Help: "Total number of HTTP requests by status code, method and path",
+	},
+	[]string{"status", "method", "path"},
+)
+
 func handleRequests(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodPost:
@@ -45,6 +54,8 @@ func handleRequests(w http.ResponseWriter, r *http.Request) {
 
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
+			httpRequestsTotal.WithLabelValues("400", r.Method, r.URL.Path).Inc()
+			httpRequestsTotal.WithLabelValues("4xx", r.Method, r.URL.Path).Inc()
 			fmt.Fprintf(w, "error: %s", err)
 			return
 		}
@@ -52,37 +63,70 @@ func handleRequests(w http.ResponseWriter, r *http.Request) {
 		err = workload.Verify()
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
+			httpRequestsTotal.WithLabelValues("400", r.Method, r.URL.Path).Inc()
+			httpRequestsTotal.WithLabelValues("4xx", r.Method, r.URL.Path).Inc()
 			fmt.Fprintf(w, "error: %s", err)
 			return
 		}
 
-		ctx := context.WithValue(r.Context(), actions.ResponseWriterKey, w)
+		// Create a response writer wrapper only for the workload execution
+		rw := &responseWriter{ResponseWriter: w}
+		ctx := context.WithValue(r.Context(), actions.ResponseWriterKey, rw)
 		ctx = logger.NewContext(ctx, LOGGER)
 
 		err = workload.Execute(ctx)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
+			httpRequestsTotal.WithLabelValues("500", r.Method, r.URL.Path).Inc()
+			httpRequestsTotal.WithLabelValues("5xx", r.Method, r.URL.Path).Inc()
 			fmt.Fprintf(w, "workload error: %s", err)
 			return
+		}
+
+		// If no status code was set by the workload, default to 200
+		if rw.statusCode == 0 {
+			w.WriteHeader(http.StatusOK)
+			httpRequestsTotal.WithLabelValues("200", r.Method, r.URL.Path).Inc()
+			httpRequestsTotal.WithLabelValues("2xx", r.Method, r.URL.Path).Inc()
+		} else {
+			httpRequestsTotal.WithLabelValues(strconv.Itoa(rw.statusCode), r.Method, r.URL.Path).Inc()
+			httpRequestsTotal.WithLabelValues(fmt.Sprintf("%dxx", rw.statusCode/100), r.Method, r.URL.Path).Inc()
 		}
 
 		fmt.Fprint(w, " ")
 		processedTransactionDuration.Observe(float64(time.Since(start).Seconds()))
 	default:
 		w.WriteHeader(http.StatusMethodNotAllowed)
+		httpRequestsTotal.WithLabelValues("405", r.Method, r.URL.Path).Inc()
+		httpRequestsTotal.WithLabelValues("4xx", r.Method, r.URL.Path).Inc()
 		fmt.Fprintf(w, "Error: Method not allowed")
 	}
 }
 
+// responseWriter is a wrapper around http.ResponseWriter that captures the status code
+type responseWriter struct {
+	http.ResponseWriter
+	statusCode int
+}
+
+func (rw *responseWriter) WriteHeader(code int) {
+	rw.statusCode = code
+	rw.ResponseWriter.WriteHeader(code)
+}
+
 func handleHealth(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
+	httpRequestsTotal.WithLabelValues("200", r.Method, r.URL.Path).Inc()
+	httpRequestsTotal.WithLabelValues("2xx", r.Method, r.URL.Path).Inc()
 }
 
 func run(log *zap.Logger, port int64) {
 	mux := http.NewServeMux()
+
 	mux.HandleFunc("/", handleRequests)
 	mux.HandleFunc("/health", handleHealth)
 	mux.HandleFunc("/ready", handleHealth)
+
 	mux.HandleFunc("/debug/pprof/", pprof.Index)
 	mux.HandleFunc("/debug/pprof/profile", pprof.Profile)
 	mux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)

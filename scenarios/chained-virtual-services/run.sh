@@ -14,10 +14,12 @@ echo "Labeling namespace $NAMESPACE for Istio injection"
 kubectl label namespace $NAMESPACE istio-injection=enabled --overwrite || true
 
 # Setup istio ingress gateway
+echo "Deploying istio ingress gateway helm chart"
 helm install istio-ingressgateway istio/gateway -n $NAMESPACE \
-    --set defaults.service.type=ClusterIP \
+    --set service.type=ClusterIP \
     --set labels.istio=chained-virtual-services-gateway
 
+echo "Deploying istio ingress gateway"
 kubectl apply -f $SCRIPT_DIR/gateway.yaml -n $NAMESPACE
 
 # Shared DB

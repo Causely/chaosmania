@@ -67,7 +67,11 @@ func main() {
 		}},
 	}
 
+	logger.Info("Starting chaosmania application")
 	if err := app.Run(os.Args); err != nil {
+		logger.Error("Application failed", zap.Error(err))
 		logger.Fatal("failed: ", zap.Error(err))
 	}
+	logger.Info("Application completed successfully, exiting with code 0")
+	os.Exit(0)
 }

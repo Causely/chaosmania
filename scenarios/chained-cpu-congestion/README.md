@@ -7,7 +7,7 @@ This scenario is designed to simulate and analyze the impact of high CPU load in
 	1.	Phase 1: Baseline Building
 During this phase, the system is subjected to a low request rate with minimal latency (10 ms). This phase lasts for 8 minutes and is intended to establish baseline values for system performance under normal operating conditions. The Payment Service operates with low CPU usage, ensuring stable order processing and frontend service response times.
 	2.	Phase 2: Increased Load and CPU Throttling
-In this phase, the request rate is tripled, which leads to significant CPU throttling and high CPU utilization in the Payment Service. As a result, latency in the Order Service and Frontend Service increases dramatically, reaching up to 500 ms. This phase simulates a real-world scenario where a sudden spike in traffic causes the Payment Service to become a bottleneck, ultimately impacting the entire system’s performance.
+In this phase, the request rate is tripled, which leads to significant CPU throttling and high CPU utilization in the Payment Service. As a result, latency in the Order Service and Frontend Service increases dramatically, reaching up to 500 ms. This phase simulates a real-world scenario where a sudden spike in traffic causes the Payment Service to become a bottleneck, ultimately impacting the entire system's performance.
 
 The goal of this scenario is to observe how increased CPU load and memory leaks in the Payment Service affect the overall system, leading to delays in order processing and a degraded user experience on the frontend.
 
@@ -39,27 +39,17 @@ This script sets up the environment, deploys the necessary services, and runs th
 
 ## Data Flow Schema
 
-```plaintext
+```mermaid
+graph TD
+    Client[Client]
+    Frontend[Frontend Service]
+    Order[Order Service]
+    Payment[Payment Service]
 
-┌───────────────────┐
-│ Client            │
-└───────────────────┘
-         │
-         ▼
-┌───────────────────┐
-│ Frontend Service  │
-└───────────────────┘
-         │
-         ▼
-┌───────────────────┐
-│ Order Service     │
-│ (Delayed Orders)  │
-└───────────────────┘
-         │
-         ▼
-┌───────────────────┐
-│ Payment Service   │
-│ (High CPU Load)   │
-└───────────────────┘
+    Client --> Frontend
+    Frontend -->|Delayed Orders| Order
+    Order -->|High CPU Load| Payment
 
+    classDef affected fill:#ff9999,stroke:#ff0000,stroke-width:2px
+    class Order,Payment affected
 ```

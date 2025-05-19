@@ -70,5 +70,4 @@ func main() {
 	if err := app.Run(os.Args); err != nil {
 		logger.Fatal("failed: ", zap.Error(err))
 	}
-	os.Exit(0)
 }

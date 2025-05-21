@@ -2,10 +2,26 @@
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 
+# Parse command line arguments
+PREFIX_USER=false
+for arg in "$@"; do
+    case $arg in
+        --prefix-user)
+            PREFIX_USER=true
+            shift
+            ;;
+    esac
+done
+
 IMAGE_REPO=quay.io/causely/chaosmania
 IMAGE_TAG=latest
 SCENARIO=cm-simple-kafka
-NAMESPACE=$USER-$SCENARIO
+# Set namespace based on --prefix-user flag
+if [ "$PREFIX_USER" = true ]; then
+    NAMESPACE=$USER-$SCENARIO
+else
+    NAMESPACE=$SCENARIO
+fi
 
 echo "Creating namespace $NAMESPACE"
 kubectl create namespace $NAMESPACE || true
@@ -37,7 +53,7 @@ helm upgrade --install --namespace $NAMESPACE \
     --set services[0].config.password="$PASSWORD" \
     --set services[0].config.tls_enable=false \
     --set services[0].config.sasl_enable=true \
-    --set otlp.enabled=$OTLP_ENABLED \
+    --set otlp.enabled=true \
     producer $SCRIPT_DIR/../../helm/single 
 
 echo
@@ -59,7 +75,7 @@ helm upgrade --install --namespace $NAMESPACE \
     --set background_services[0].config.group=my-consumer-group \
     --set background_services[0].config.script="function run() { var msg = ctx.get_message(); ctx.print('Received message: ' + msg); }" \
     --set enabled_background_services[0]="kafka-consumer" \
-    --set otlp.enabled=$OTLP_ENABLED \
+    --set otlp.enabled=true \
     consumer $SCRIPT_DIR/../../helm/single 
 
 echo
@@ -87,6 +103,6 @@ helm upgrade --install --namespace $NAMESPACE \
     --set chaos.host=producer \
     --set chaos.plan=/scenarios/$SCENARIO-plan.yaml \
     --set business_application=$SCENARIO \
-    --set otlp.enabled=$OTLP_ENABLED \
+    --set otlp.enabled=true \
     client $SCRIPT_DIR/../../helm/client
 

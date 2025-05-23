@@ -324,9 +324,27 @@ func command_client(logger *zap.Logger, ctx *cli.Context) error {
 	host := ctx.String("host")
 	port := ctx.Int64("port")
 	header := ctx.StringSlice("header")
+	durationStr := ctx.String("duration")
 
 	// Create a root context that will be cancelled when the command completes
-	rootCtx, cancel := context.WithCancel(context.Background())
+	var rootCtx context.Context
+	var cancel context.CancelFunc
+
+	if durationStr != "" {
+		duration, err := time.ParseDuration(durationStr)
+		if err != nil {
+			return fmt.Errorf("invalid duration format: %w", err)
+		}
+		if duration < time.Second {
+			return fmt.Errorf("duration must be at least 1 second")
+		}
+		if duration > 28*24*time.Hour {
+			return fmt.Errorf("duration cannot exceed 28 days")
+		}
+		rootCtx, cancel = context.WithTimeout(context.Background(), duration)
+	} else {
+		rootCtx, cancel = context.WithCancel(context.Background())
+	}
 	defer func() {
 		logger.Info("Command completed, initiating graceful shutdown...")
 		cancel()
@@ -359,12 +377,22 @@ func command_client(logger *zap.Logger, ctx *cli.Context) error {
 		totalSeconds += phaseSeconds * int(phase.Repeat)
 	}
 
-	logger.Info(fmt.Sprintf("Total estimated execution time: %s", time.Duration(totalSeconds*int(time.Second))))
+	if durationStr != "" {
+		duration, _ := time.ParseDuration(durationStr)
+		logger.Info(fmt.Sprintf("Test will run for maximum duration: %s", duration))
+	} else {
+		logger.Info(fmt.Sprintf("Total estimated execution time: %s", time.Duration(totalSeconds*int(time.Second))))
+	}
 
 	for i, phase := range plan.Phases {
 		for j := 0; j < int(phase.Repeat); j++ {
 			err := executePhase(logger, phase, raw["phases"].([]any)[i].(map[string]any), host, port, headers, rootCtx)
 			if err != nil {
+				// If we hit the deadline and duration was specified, treat it as success
+				if err == context.DeadlineExceeded && durationStr != "" {
+					logger.Info("Test completed successfully after reaching specified duration limit")
+					return nil
+				}
 				return err
 			}
 		}

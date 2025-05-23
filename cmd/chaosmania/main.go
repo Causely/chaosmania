@@ -51,6 +51,11 @@ func main() {
 					Usage:    "Headers to include in the request",
 					Required: false,
 				},
+				&cli.StringFlag{
+					Name:     "duration",
+					Usage:    "Total duration for the test run (e.g. '1h', '30m', '2h30m')",
+					Required: false,
+				},
 			},
 		}, {
 			Name: "server",

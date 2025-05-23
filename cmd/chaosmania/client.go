@@ -128,6 +128,14 @@ loop:
 	for {
 		select {
 		case <-ctx.Done():
+			switch ctx.Err() {
+			case context.Canceled:
+				logger.Debug("Worker stopping due to command completion")
+			case context.DeadlineExceeded:
+				logger.Debug("Worker stopping due to timeout")
+			default:
+				logger.Debug("Worker stopping due to context error", zap.Error(ctx.Err()))
+			}
 			break loop
 		case <-time.After(delay):
 			start := time.Now()
@@ -155,6 +163,18 @@ loop:
 			took := time.Since(start)
 
 			if err != nil {
+				// Check if the error is due to context cancellation
+				if ctx.Err() != nil {
+					switch ctx.Err() {
+					case context.Canceled:
+						logger.Debug("Request cancelled due to command completion")
+					case context.DeadlineExceeded:
+						logger.Debug("Request cancelled due to timeout")
+					default:
+						logger.Debug("Request cancelled due to context error", zap.Error(ctx.Err()))
+					}
+					break loop
+				}
 				atomic.AddUint64(&stats.counters.Errors, 1)
 				continue
 			}
@@ -162,6 +182,7 @@ loop:
 			if resp.StatusCode == 400 {
 				s, err := io.ReadAll(resp.Body)
 				if err != nil {
+					resp.Body.Close()
 					continue
 				}
 
@@ -186,7 +207,7 @@ loop:
 	}
 }
 
-func executePhase(logger *zap.Logger, phase actions.Phase, raw map[string]any, host string, port int64, header map[string]string) error {
+func executePhase(logger *zap.Logger, phase actions.Phase, raw map[string]any, host string, port int64, header map[string]string, ctx context.Context) error {
 	logger.Info("")
 	logger.Info(fmt.Sprintf("Starting phase: %s", phase.Name))
 
@@ -210,8 +231,8 @@ func executePhase(logger *zap.Logger, phase actions.Phase, raw map[string]any, h
 		var wg sync.WaitGroup
 		wg.Add(int(w.Instances))
 
-		ctx := context.Background()
-		ctx, cancel := context.WithTimeout(ctx, w.Duration)
+		// Create a child context with timeout that will be cancelled when parent is cancelled
+		workerCtx, cancel := context.WithTimeout(ctx, w.Duration)
 		defer cancel()
 
 		payloadBytes, err := json.Marshal(raw["workload"])
@@ -222,7 +243,7 @@ func executePhase(logger *zap.Logger, phase actions.Phase, raw map[string]any, h
 		for i := 0; i < int(w.Instances); i++ {
 			go func(stats *statistics) {
 				defer wg.Done()
-				runWorker(logger, stats, w.Timeout, ctx, w.Delay, host, port, payloadBytes, header)
+				runWorker(logger, stats, w.Timeout, workerCtx, w.Delay, host, port, payloadBytes, header)
 			}(&stats)
 		}
 
@@ -233,6 +254,7 @@ func executePhase(logger *zap.Logger, phase actions.Phase, raw map[string]any, h
 			var last statisticCounters
 			interval := 10
 			t := time.NewTicker(time.Duration(interval) * time.Second)
+			defer t.Stop()
 
 			for {
 				select {
@@ -257,7 +279,7 @@ func executePhase(logger *zap.Logger, phase actions.Phase, raw map[string]any, h
 
 					last = current
 					logger.Info(fmt.Sprintf("%.1f req/s, avg latency %v, %v errors, %v ok", float64(requests)/float64(interval), latency, errors, ok))
-				case <-ctx.Done():
+				case <-workerCtx.Done():
 					return
 				}
 			}
@@ -266,18 +288,8 @@ func executePhase(logger *zap.Logger, phase actions.Phase, raw map[string]any, h
 		wg.Wait()
 	}
 
-	// Teardown
-	if t, ok := raw["teardown"]; ok {
-		err := sendRequest(logger, t.(map[string]any), host, port, header)
-		if err != nil {
-			return err
-		}
-	}
-
 	var a time.Duration
-
 	successfulRequests := stats.counters.Requests - stats.counters.Errors
-
 	if successfulRequests > 0 {
 		a = time.Duration(int64(stats.counters.DurationMicroseconds/successfulRequests)) * time.Microsecond
 	}
@@ -294,7 +306,17 @@ func executePhase(logger *zap.Logger, phase actions.Phase, raw map[string]any, h
 		logger.Info(fmt.Sprintf("%v: %v", code, count))
 	}
 
-	return nil
+	// Always run teardown, even if context is cancelled
+	if t, ok := raw["teardown"]; ok {
+		logger.Info("Running teardown...")
+		err := sendRequest(logger, t.(map[string]any), host, port, header)
+		if err != nil {
+			logger.Warn("Teardown failed", zap.Error(err))
+			// Don't return the error since we want to ensure the context cancellation propagates
+		}
+	}
+
+	return ctx.Err()
 }
 
 func command_client(logger *zap.Logger, ctx *cli.Context) error {
@@ -302,6 +324,13 @@ func command_client(logger *zap.Logger, ctx *cli.Context) error {
 	host := ctx.String("host")
 	port := ctx.Int64("port")
 	header := ctx.StringSlice("header")
+
+	// Create a root context that will be cancelled when the command completes
+	rootCtx, cancel := context.WithCancel(context.Background())
+	defer func() {
+		logger.Info("Command completed, initiating graceful shutdown...")
+		cancel()
+	}()
 
 	headers := make(map[string]string)
 	for _, h := range header {
@@ -334,7 +363,7 @@ func command_client(logger *zap.Logger, ctx *cli.Context) error {
 
 	for i, phase := range plan.Phases {
 		for j := 0; j < int(phase.Repeat); j++ {
-			err := executePhase(logger, phase, raw["phases"].([]any)[i].(map[string]any), host, port, headers)
+			err := executePhase(logger, phase, raw["phases"].([]any)[i].(map[string]any), host, port, headers, rootCtx)
 			if err != nil {
 				return err
 			}

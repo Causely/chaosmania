@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math/rand"
 	"net/http"
 	"os"
 	"strings"
@@ -319,23 +320,6 @@ func executePhase(logger *zap.Logger, phase actions.Phase, raw map[string]any, h
 	return ctx.Err()
 }
 
-// calculateScaleFactor calculates the scale factor needed to fit all phases within the target duration
-func calculateScaleFactor(plan actions.Plan, targetDuration time.Duration) float64 {
-	var totalPlannedDuration time.Duration
-	for _, phase := range plan.Phases {
-		// Only consider the first iteration of each phase
-		for _, w := range phase.Client.Workers {
-			totalPlannedDuration += w.Duration
-		}
-	}
-
-	if totalPlannedDuration == 0 {
-		return 1.0
-	}
-
-	return float64(targetDuration) / float64(totalPlannedDuration)
-}
-
 // calculatePhaseDuration calculates the total duration for a single phase
 func calculatePhaseDuration(phase actions.Phase) time.Duration {
 	var duration time.Duration
@@ -345,9 +329,9 @@ func calculatePhaseDuration(phase actions.Phase) time.Duration {
 	return duration
 }
 
-// calculatePhaseDurations calculates the duration for each phase based on the plan and optional total duration
-func calculatePhaseDurations(plan actions.Plan, totalDuration time.Duration) []time.Duration {
-	if totalDuration == 0 {
+// calculatePhaseDurations calculates the duration for each phase based on the plan and optional pattern duration
+func calculatePhaseDurations(plan actions.Plan, patternDuration time.Duration, repeatsPerPhase int) []time.Duration {
+	if patternDuration == 0 {
 		// No duration override, use original phase durations
 		durations := make([]time.Duration, len(plan.Phases))
 		for i, phase := range plan.Phases {
@@ -356,8 +340,9 @@ func calculatePhaseDurations(plan actions.Plan, totalDuration time.Duration) []t
 		return durations
 	}
 
-	// With duration override, divide time equally among phases
-	perPhaseDuration := totalDuration / time.Duration(len(plan.Phases))
+	// With pattern duration override, divide time equally among phases
+	// Each phase gets an equal share of the pattern duration
+	perPhaseDuration := patternDuration / time.Duration(len(plan.Phases))
 	durations := make([]time.Duration, len(plan.Phases))
 	for i := range durations {
 		durations[i] = perPhaseDuration
@@ -365,20 +350,48 @@ func calculatePhaseDurations(plan actions.Plan, totalDuration time.Duration) []t
 	return durations
 }
 
+// selectNextPhase determines the next phase to execute based on the pattern
+func selectNextPhase(plan actions.Plan, currentPhase int) int {
+	switch plan.Pattern {
+	case actions.PatternCycle:
+		// Move to next phase, wrap around
+		return (currentPhase + 1) % len(plan.Phases)
+	case actions.PatternRandom:
+		// Randomly select next phase
+		return rand.Intn(len(plan.Phases))
+	case actions.PatternSequence:
+		fallthrough
+	default:
+		// Default to sequence for backward compatibility
+		return currentPhase
+	}
+}
+
 func command_client(logger *zap.Logger, ctx *cli.Context) error {
 	planPath := ctx.String("plan")
 	host := ctx.String("host")
 	port := ctx.Int64("port")
 	header := ctx.StringSlice("header")
-	durationStr := ctx.String("total-duration")
-	maxRepeats := ctx.Int("max-repeats")
+	patternDurationStr := ctx.String("pattern-duration")
+	repeatsPerPhase := ctx.Int("repeats-per-phase")
+	phasePattern := ctx.String("phase-pattern")
 
-	// Validate max-repeats
-	if maxRepeats < 0 {
-		return fmt.Errorf("max-repeats must be 0 (unlimited) or a positive number")
+	// Validate repeats-per-phase
+	if repeatsPerPhase < 0 {
+		return fmt.Errorf("repeats-per-phase must be 0 (unlimited) or a positive number")
 	}
-	if maxRepeats > 500 {
-		return fmt.Errorf("max-repeats cannot exceed 500")
+	if repeatsPerPhase > 500 {
+		return fmt.Errorf("repeats-per-phase cannot exceed 500")
+	}
+
+	// Validate phase pattern if specified
+	if phasePattern != "" {
+		switch actions.PhasePattern(phasePattern) {
+		case actions.PatternSequence, actions.PatternCycle, actions.PatternRandom:
+			// Valid patterns
+		default:
+			return fmt.Errorf("invalid phase pattern: %s. Must be one of: sequence, cycle, random", phasePattern)
+		}
 	}
 
 	headers := make(map[string]string)
@@ -392,16 +405,27 @@ func command_client(logger *zap.Logger, ctx *cli.Context) error {
 		return err
 	}
 
+	// Override pattern if specified
+	if phasePattern != "" {
+		plan.Pattern = actions.PhasePattern(phasePattern)
+	}
+
+	// Set default pattern if not specified
+	if plan.Pattern == "" {
+		plan.Pattern = actions.PatternSequence
+	}
+
 	logger.Info("Successfully loaded execution plan")
 	logger.Info(fmt.Sprintf("Phases: %d", len(plan.Phases)))
+	logger.Info(fmt.Sprintf("Phase pattern: %s", plan.Pattern))
 
 	shutdown := InitOTLPProvider(logger)
 	defer shutdown()
 
-	// Parse duration if specified
-	var totalDuration time.Duration
-	if durationStr != "" {
-		duration, err := time.ParseDuration(durationStr)
+	// Parse pattern duration if specified
+	var patternDuration time.Duration
+	if patternDurationStr != "" {
+		duration, err := time.ParseDuration(patternDurationStr)
 		if err != nil {
 			return fmt.Errorf("invalid duration format: %w", err)
 		}
@@ -411,26 +435,32 @@ func command_client(logger *zap.Logger, ctx *cli.Context) error {
 		if duration > 28*24*time.Hour {
 			return fmt.Errorf("duration cannot exceed 28 days")
 		}
-		totalDuration = duration
+		patternDuration = duration
 	}
 
 	// Calculate phase durations upfront
-	phaseDurations := calculatePhaseDurations(plan, totalDuration)
+	phaseDurations := calculatePhaseDurations(plan, patternDuration, repeatsPerPhase)
 
 	// Log duration information
-	if totalDuration > 0 {
+	if patternDuration > 0 {
 		// Calculate actual total duration accounting for repeats
-		actualDuration := totalDuration
-		if maxRepeats > 0 {
-			actualDuration = totalDuration * time.Duration(maxRepeats)
+		actualDuration := patternDuration
+		if repeatsPerPhase > 0 {
+			actualDuration = patternDuration * time.Duration(repeatsPerPhase)
 		}
-		logger.Info(fmt.Sprintf("Test will run for maximum duration: %s", actualDuration))
+		logger.Info(fmt.Sprintf("Pattern duration: %s", patternDuration))
+		if repeatsPerPhase > 0 {
+			logger.Info(fmt.Sprintf("Total runtime will be: %s (pattern duration × %d repeats)", actualDuration, repeatsPerPhase))
+		}
 		for i, duration := range phaseDurations {
 			phaseActualDuration := duration
-			if maxRepeats > 0 {
-				phaseActualDuration = duration * time.Duration(maxRepeats)
+			if repeatsPerPhase > 0 {
+				phaseActualDuration = duration * time.Duration(repeatsPerPhase)
 			}
-			logger.Info(fmt.Sprintf("Phase %d will run for: %s", i+1, phaseActualDuration))
+			logger.Info(fmt.Sprintf("Phase %d will run for: %s per execution", i+1, duration))
+			if repeatsPerPhase > 0 {
+				logger.Info(fmt.Sprintf("Phase %d total runtime: %s (%s × %d repeats)", i+1, phaseActualDuration, duration, repeatsPerPhase))
+			}
 		}
 	} else {
 		var totalSeconds int
@@ -439,18 +469,18 @@ func command_client(logger *zap.Logger, ctx *cli.Context) error {
 			for _, w := range phase.Client.Workers {
 				phaseSeconds += int(w.Duration.Seconds())
 			}
-			// If maxRepeats is set, use that value for each phase
+			// If repeats-per-phase is set, use that value for each phase
 			phaseRepeats := int(phase.Repeat)
-			if maxRepeats > 0 {
-				phaseRepeats = maxRepeats
+			if repeatsPerPhase > 0 {
+				phaseRepeats = repeatsPerPhase
 			}
 			totalSeconds += phaseSeconds * phaseRepeats
 		}
 		logger.Info(fmt.Sprintf("Total estimated execution time: %s", time.Duration(totalSeconds*int(time.Second))))
 	}
 
-	if maxRepeats > 0 {
-		logger.Info(fmt.Sprintf("Each phase will run %d times", maxRepeats))
+	if repeatsPerPhase > 0 {
+		logger.Info(fmt.Sprintf("Each phase will run %d times", repeatsPerPhase))
 	}
 
 	// Create root context for cancellation propagation
@@ -460,35 +490,52 @@ func command_client(logger *zap.Logger, ctx *cli.Context) error {
 		cancel()
 	}()
 
-	// Execute each phase with its calculated duration
-	for i, phase := range plan.Phases {
-		// Determine how many times to repeat this phase
-		phaseRepeats := int(phase.Repeat)
-		if maxRepeats > 0 {
-			phaseRepeats = maxRepeats
+	// Create pattern executor
+	patternExecutor := actions.NewPatternExecutor(plan.Pattern, len(plan.Phases))
+
+	// Execute phases based on pattern
+	currentPhase := 0
+	phaseExecutions := make([]int, len(plan.Phases))
+
+	for {
+		// Check if we've hit the repeat limit for current phase
+		if repeatsPerPhase > 0 && phaseExecutions[currentPhase] >= repeatsPerPhase {
+			nextPhase := patternExecutor.NextPhase(currentPhase, phaseExecutions, repeatsPerPhase)
+			if nextPhase == -1 {
+				logger.Info("All phases completed their repeats, stopping execution")
+				return nil
+			}
+			currentPhase = nextPhase
+			continue
 		}
 
-		for j := 0; j < phaseRepeats; j++ {
-			// Create a new context for each phase execution with its specific duration
-			phaseCtx, phaseCancel := context.WithTimeout(rootCtx, phaseDurations[i])
-			err := executePhase(logger, phase, raw["phases"].([]any)[i].(map[string]any), host, port, headers, phaseCtx)
-			phaseCancel()
+		// Execute current phase
+		phaseCtx, phaseCancel := context.WithTimeout(rootCtx, phaseDurations[currentPhase])
+		err := executePhase(logger, plan.Phases[currentPhase], raw["phases"].([]any)[currentPhase].(map[string]any), host, port, headers, phaseCtx)
+		phaseCancel()
 
-			if err != nil {
-				// Only treat deadline exceeded as success if this is the last phase
-				if err == context.DeadlineExceeded && totalDuration > 0 {
-					if i == len(plan.Phases)-1 && j == phaseRepeats-1 {
-						logger.Info("Test completed successfully after reaching specified duration limit")
-						return nil
-					}
-					// For non-final phases, continue to the next phase
-					logger.Info(fmt.Sprintf("Phase %d completed after reaching its time limit, continuing to next phase", i+1))
-					continue
+		if err != nil {
+			// Only treat deadline exceeded as success if this is the last execution
+			if err == context.DeadlineExceeded && patternDuration > 0 {
+				if repeatsPerPhase > 0 && patternExecutor.IsComplete(phaseExecutions, repeatsPerPhase) {
+					logger.Info("Test completed successfully after reaching specified pattern duration limit")
+					return nil
 				}
+				// For non-final executions, continue to the next phase
+				logger.Info(fmt.Sprintf("Phase %d completed after reaching its time limit, continuing to next phase", currentPhase+1))
+			} else {
 				return err
 			}
 		}
-	}
 
-	return nil
+		phaseExecutions[currentPhase]++
+
+		// Get next phase based on pattern
+		nextPhase := patternExecutor.NextPhase(currentPhase, phaseExecutions, repeatsPerPhase)
+		if nextPhase == -1 {
+			logger.Info("All phases completed their repeats, stopping execution")
+			return nil
+		}
+		currentPhase = nextPhase
+	}
 }

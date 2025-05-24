@@ -52,15 +52,19 @@ func main() {
 					Required: false,
 				},
 				&cli.StringFlag{
-					Name:     "total-duration",
-					Usage:    "Total duration for the test run (e.g. '1h', '30m', '2h30m').  Plans with multiple phases will be scaled to fit this duration.",
-					Required: false,
+					Name:  "pattern-duration",
+					Usage: "Duration for a single pattern execution (e.g., 1h, 30m). Total runtime will be this duration multiplied by repeats-per-phase.",
+					Value: "",
+				},
+				&cli.StringFlag{
+					Name:  "phase-pattern",
+					Usage: "Override the phase pattern (sequence, cycle, random)",
+					Value: "",
 				},
 				&cli.IntFlag{
-					Name:     "max-repeats",
-					Usage:    "Maximum number of phase repeats to execute (0 for unlimited, max 500)",
-					Required: false,
-					Value:    0,
+					Name:  "repeats-per-phase",
+					Usage: "Number of times to repeat each phase (0 for unlimited, max 500)",
+					Value: 0,
 				},
 			},
 		}, {

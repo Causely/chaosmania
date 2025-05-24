@@ -46,8 +46,10 @@ type Client struct {
 	Workers []Workers `yaml:"workers" json:"workers"`
 }
 
+// Plan defines the structure of a chaos test plan
 type Plan struct {
-	Phases []Phase `json:"phases"`
+	Pattern PhasePattern `yaml:"pattern"`
+	Phases  []Phase      `yaml:"phases"`
 }
 
 func (plan *Plan) Verify() error {

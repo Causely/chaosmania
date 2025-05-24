@@ -319,36 +319,67 @@ func executePhase(logger *zap.Logger, phase actions.Phase, raw map[string]any, h
 	return ctx.Err()
 }
 
+// calculateScaleFactor calculates the scale factor needed to fit all phases within the target duration
+func calculateScaleFactor(plan actions.Plan, targetDuration time.Duration) float64 {
+	var totalPlannedDuration time.Duration
+	for _, phase := range plan.Phases {
+		// Only consider the first iteration of each phase
+		for _, w := range phase.Client.Workers {
+			totalPlannedDuration += w.Duration
+		}
+	}
+
+	if totalPlannedDuration == 0 {
+		return 1.0
+	}
+
+	return float64(targetDuration) / float64(totalPlannedDuration)
+}
+
+// calculatePhaseDuration calculates the total duration for a single phase
+func calculatePhaseDuration(phase actions.Phase) time.Duration {
+	var duration time.Duration
+	for _, w := range phase.Client.Workers {
+		duration += w.Duration
+	}
+	return duration
+}
+
+// calculatePhaseDurations calculates the duration for each phase based on the plan and optional total duration
+func calculatePhaseDurations(plan actions.Plan, totalDuration time.Duration) []time.Duration {
+	if totalDuration == 0 {
+		// No duration override, use original phase durations
+		durations := make([]time.Duration, len(plan.Phases))
+		for i, phase := range plan.Phases {
+			durations[i] = calculatePhaseDuration(phase)
+		}
+		return durations
+	}
+
+	// With duration override, divide time equally among phases
+	perPhaseDuration := totalDuration / time.Duration(len(plan.Phases))
+	durations := make([]time.Duration, len(plan.Phases))
+	for i := range durations {
+		durations[i] = perPhaseDuration
+	}
+	return durations
+}
+
 func command_client(logger *zap.Logger, ctx *cli.Context) error {
 	planPath := ctx.String("plan")
 	host := ctx.String("host")
 	port := ctx.Int64("port")
 	header := ctx.StringSlice("header")
-	durationStr := ctx.String("duration")
+	durationStr := ctx.String("total-duration")
+	maxRepeats := ctx.Int("max-repeats")
 
-	// Create a root context that will be cancelled when the command completes
-	var rootCtx context.Context
-	var cancel context.CancelFunc
-
-	if durationStr != "" {
-		duration, err := time.ParseDuration(durationStr)
-		if err != nil {
-			return fmt.Errorf("invalid duration format: %w", err)
-		}
-		if duration < time.Second {
-			return fmt.Errorf("duration must be at least 1 second")
-		}
-		if duration > 28*24*time.Hour {
-			return fmt.Errorf("duration cannot exceed 28 days")
-		}
-		rootCtx, cancel = context.WithTimeout(context.Background(), duration)
-	} else {
-		rootCtx, cancel = context.WithCancel(context.Background())
+	// Validate max-repeats
+	if maxRepeats < 0 {
+		return fmt.Errorf("max-repeats must be 0 (unlimited) or a positive number")
 	}
-	defer func() {
-		logger.Info("Command completed, initiating graceful shutdown...")
-		cancel()
-	}()
+	if maxRepeats > 500 {
+		return fmt.Errorf("max-repeats cannot exceed 500")
+	}
 
 	headers := make(map[string]string)
 	for _, h := range header {
@@ -361,37 +392,98 @@ func command_client(logger *zap.Logger, ctx *cli.Context) error {
 		return err
 	}
 
-	shutdown := InitOTLPProvider(logger)
-	defer shutdown()
-
 	logger.Info("Successfully loaded execution plan")
 	logger.Info(fmt.Sprintf("Phases: %d", len(plan.Phases)))
 
-	var totalSeconds int
-	for _, phase := range plan.Phases {
-		var phaseSeconds int
-		for _, w := range phase.Client.Workers {
-			phaseSeconds += int(w.Duration.Seconds())
-		}
+	shutdown := InitOTLPProvider(logger)
+	defer shutdown()
 
-		totalSeconds += phaseSeconds * int(phase.Repeat)
+	// Parse duration if specified
+	var totalDuration time.Duration
+	if durationStr != "" {
+		duration, err := time.ParseDuration(durationStr)
+		if err != nil {
+			return fmt.Errorf("invalid duration format: %w", err)
+		}
+		if duration < time.Second {
+			return fmt.Errorf("duration must be at least 1 second")
+		}
+		if duration > 28*24*time.Hour {
+			return fmt.Errorf("duration cannot exceed 28 days")
+		}
+		totalDuration = duration
 	}
 
-	if durationStr != "" {
-		duration, _ := time.ParseDuration(durationStr)
-		logger.Info(fmt.Sprintf("Test will run for maximum duration: %s", duration))
+	// Calculate phase durations upfront
+	phaseDurations := calculatePhaseDurations(plan, totalDuration)
+
+	// Log duration information
+	if totalDuration > 0 {
+		// Calculate actual total duration accounting for repeats
+		actualDuration := totalDuration
+		if maxRepeats > 0 {
+			actualDuration = totalDuration * time.Duration(maxRepeats)
+		}
+		logger.Info(fmt.Sprintf("Test will run for maximum duration: %s", actualDuration))
+		for i, duration := range phaseDurations {
+			phaseActualDuration := duration
+			if maxRepeats > 0 {
+				phaseActualDuration = duration * time.Duration(maxRepeats)
+			}
+			logger.Info(fmt.Sprintf("Phase %d will run for: %s", i+1, phaseActualDuration))
+		}
 	} else {
+		var totalSeconds int
+		for _, phase := range plan.Phases {
+			var phaseSeconds int
+			for _, w := range phase.Client.Workers {
+				phaseSeconds += int(w.Duration.Seconds())
+			}
+			// If maxRepeats is set, use that value for each phase
+			phaseRepeats := int(phase.Repeat)
+			if maxRepeats > 0 {
+				phaseRepeats = maxRepeats
+			}
+			totalSeconds += phaseSeconds * phaseRepeats
+		}
 		logger.Info(fmt.Sprintf("Total estimated execution time: %s", time.Duration(totalSeconds*int(time.Second))))
 	}
 
+	if maxRepeats > 0 {
+		logger.Info(fmt.Sprintf("Each phase will run %d times", maxRepeats))
+	}
+
+	// Create root context for cancellation propagation
+	rootCtx, cancel := context.WithCancel(context.Background())
+	defer func() {
+		logger.Info("Command completed, initiating graceful shutdown...")
+		cancel()
+	}()
+
+	// Execute each phase with its calculated duration
 	for i, phase := range plan.Phases {
-		for j := 0; j < int(phase.Repeat); j++ {
-			err := executePhase(logger, phase, raw["phases"].([]any)[i].(map[string]any), host, port, headers, rootCtx)
+		// Determine how many times to repeat this phase
+		phaseRepeats := int(phase.Repeat)
+		if maxRepeats > 0 {
+			phaseRepeats = maxRepeats
+		}
+
+		for j := 0; j < phaseRepeats; j++ {
+			// Create a new context for each phase execution with its specific duration
+			phaseCtx, phaseCancel := context.WithTimeout(rootCtx, phaseDurations[i])
+			err := executePhase(logger, phase, raw["phases"].([]any)[i].(map[string]any), host, port, headers, phaseCtx)
+			phaseCancel()
+
 			if err != nil {
-				// If we hit the deadline and duration was specified, treat it as success
-				if err == context.DeadlineExceeded && durationStr != "" {
-					logger.Info("Test completed successfully after reaching specified duration limit")
-					return nil
+				// Only treat deadline exceeded as success if this is the last phase
+				if err == context.DeadlineExceeded && totalDuration > 0 {
+					if i == len(plan.Phases)-1 && j == phaseRepeats-1 {
+						logger.Info("Test completed successfully after reaching specified duration limit")
+						return nil
+					}
+					// For non-final phases, continue to the next phase
+					logger.Info(fmt.Sprintf("Phase %d completed after reaching its time limit, continuing to next phase", i+1))
+					continue
 				}
 				return err
 			}

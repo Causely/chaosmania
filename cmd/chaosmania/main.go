@@ -52,9 +52,15 @@ func main() {
 					Required: false,
 				},
 				&cli.StringFlag{
-					Name:     "duration",
-					Usage:    "Total duration for the test run (e.g. '1h', '30m', '2h30m')",
+					Name:     "total-duration",
+					Usage:    "Total duration for the test run (e.g. '1h', '30m', '2h30m').  Plans with multiple phases will be scaled to fit this duration.",
 					Required: false,
+				},
+				&cli.IntFlag{
+					Name:     "max-repeats",
+					Usage:    "Maximum number of phase repeats to execute (0 for unlimited, max 500)",
+					Required: false,
+					Value:    0,
 				},
 			},
 		}, {

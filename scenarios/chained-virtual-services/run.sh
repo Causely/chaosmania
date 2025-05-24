@@ -2,18 +2,40 @@
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 
+# Parse command line arguments
+PREFIX_USER=false
+for arg in "$@"; do
+    case $arg in
+        --prefix-user)
+            PREFIX_USER=true
+            shift
+            ;;
+    esac
+done
+
 IMAGE_REPO=quay.io/causely/chaosmania
 IMAGE_TAG=latest
-NAMESPACE=cm-chained-virtual-services
+SCENARIO=cm-chained-virtual-services
+# Set namespace based on --prefix-user flag
+if [ "$PREFIX_USER" = true ]; then
+    NAMESPACE=$USER-$SCENARIO
+else
+    NAMESPACE=$SCENARIO
+fi
 
-kubectl create namespace $NAMESPACE
-kubectl label namespace $NAMESPACE istio-injection=enabled --overwrite
+echo "Creating namespace $NAMESPACE"
+kubectl create namespace $NAMESPACE || true
+
+echo "Labeling namespace $NAMESPACE for Istio injection"
+kubectl label namespace $NAMESPACE istio-injection=enabled --overwrite || true
 
 # Setup istio ingress gateway
+echo "Deploying istio ingress gateway helm chart"
 helm install istio-ingressgateway istio/gateway -n $NAMESPACE \
-    --set defaults.service.type=ClusterIP \
+    --set service.type=ClusterIP \
     --set labels.istio=chained-virtual-services-gateway
 
+echo "Deploying istio ingress gateway"
 kubectl apply -f $SCRIPT_DIR/gateway.yaml -n $NAMESPACE
 
 # Shared DB
@@ -28,14 +50,16 @@ echo "Deploying frontend"
 helm upgrade --install --namespace $NAMESPACE \
     --set image.tag=$IMAGE_TAG \
     --set replicaCount=2 \
-    --set business_application=$NAMESPACE-app1 \
+    --set business_application=$SCENARIO-app1 \
+    --set otlp.enabled=true \
     frontend-app1 $SCRIPT_DIR/../../helm/single 
 
 echo "Deploying payment"
 helm upgrade --install --namespace $NAMESPACE \
     --set image.tag=$IMAGE_TAG \
     --set replicaCount=2 \
-    --set business_application=$NAMESPACE-app1 \
+    --set business_application=$SCENARIO-app1 \
+    --set otlp.enabled=true \
     payment-app1 $SCRIPT_DIR/../../helm/single 
 
 
@@ -50,7 +74,8 @@ helm upgrade --install --namespace $NAMESPACE \
     --set chaos.port="80" \
     --set chaos.header="Host:app1.chaosmania.example.com" \
     --set chaos.plan=/scenarios/cm-chained-virtual-services-app1-plan.yaml \
-    --set business_application=$NAMESPACE-app1 \
+    --set business_application=$SCENARIO-app1 \
+    --set otlp.enabled=true \
     client-app1 $SCRIPT_DIR/../../helm/client
 
 # App 2
@@ -58,14 +83,16 @@ echo "Deploying frontend"
 helm upgrade --install --namespace $NAMESPACE \
     --set image.tag=$IMAGE_TAG \
     --set replicaCount=2 \
-    --set business_application=$NAMESPACE-app2 \
+    --set business_application=$SCENARIO-app2 \
+    --set otlp.enabled=true \
     frontend-app2 $SCRIPT_DIR/../../helm/single 
 
 echo "Deploying payment"
 helm upgrade --install --namespace $NAMESPACE \
     --set image.tag=$IMAGE_TAG \
     --set replicaCount=2 \
-    --set business_application=$NAMESPACE-app2 \
+    --set business_application=$SCENARIO-app2 \
+    --set otlp.enabled=true \
     payment-app2 $SCRIPT_DIR/../../helm/single 
 
 echo "Setup VS for app2"
@@ -79,5 +106,6 @@ helm upgrade --install --namespace $NAMESPACE \
     --set chaos.port="80" \
     --set chaos.header="Host:app2.chaosmania.example.com" \
     --set chaos.plan=/scenarios/cm-chained-virtual-services-app2-plan.yaml \
-    --set business_application=$NAMESPACE-app2 \
+    --set business_application=$SCENARIO-app2 \
+    --set otlp.enabled=true \
     client-app2 $SCRIPT_DIR/../../helm/client

@@ -1,55 +1,23 @@
-#!/bin/sh
+#!/bin/bash
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+source $SCRIPT_DIR/../../scripts/lib/chaosmania.sh
 
-# Parse command line arguments
-PREFIX_USER=false
-for arg in "$@"; do
-    case $arg in
-        --prefix-user)
-            PREFIX_USER=true
-            shift
-            ;;
-    esac
-done
+# Parse arguments
+parse_args "$@"
 
-IMAGE_REPO=quay.io/causely/chaosmania
-IMAGE_TAG=latest
+# Setup scenario
 SCENARIO=cm-client-throttled
-# Set namespace based on --prefix-user flag
-if [ "$PREFIX_USER" = true ]; then
-    NAMESPACE=$USER-$SCENARIO
-else
-    NAMESPACE=$SCENARIO
-fi
 
-echo "Creating namespace $NAMESPACE"
-kubectl create namespace $NAMESPACE || true
+# Setup namespace
+setup_namespace $SCENARIO
 
-echo "Labeling namespace $NAMESPACE for Istio injection"
-kubectl label namespace $NAMESPACE istio-injection=enabled --overwrite || true
+# Deploy single instance
+upgrade_single "single" $NAMESPACE $SCENARIO $SCRIPT_DIR "--set" "resources.limits.cpu=500m" "--set" "replicaCount=3"
 
-helm upgrade --install --namespace $NAMESPACE \
-    --set image.tag=$IMAGE_TAG \
-    --set resources.limits.cpu="500m"\
-    --set replicaCount=3 \
-    --set business_application=$SCENARIO \
-    --set otlp.enabled=true \
-    single $SCRIPT_DIR/../../helm/single 
+# Deploy throttled client
+upgrade_client $NAMESPACE $SCENARIO $SCRIPT_DIR "client-throttled" "single" "/scenarios/$SCENARIO-throttled.yaml"
 
-helm delete --namespace $NAMESPACE client-throttled
-helm upgrade --install --namespace $NAMESPACE \
-    --set image.tag=$IMAGE_TAG \
-    --set chaos.plan=/scenarios/$SCENARIO-throttled.yaml \
-    --set business_application=$SCENARIO \
-    --set otlp.enabled=true \
-    client-throttled $SCRIPT_DIR/../../helm/client
-
-helm delete --namespace $NAMESPACE client-not-throttled
-helm upgrade --install --namespace $NAMESPACE \
-    --set image.tag=$IMAGE_TAG \
-    --set chaos.plan=/scenarios/$SCENARIO-not_throttled.yaml \
-    --set business_application=$SCENARIO \
-    --set otlp.enabled=true \
-    client-not-throttled $SCRIPT_DIR/../../helm/client
+# Deploy non-throttled client
+upgrade_client $NAMESPACE $SCENARIO $SCRIPT_DIR "client-not-throttled" "single" "/scenarios/$SCENARIO-not_throttled.yaml"
 

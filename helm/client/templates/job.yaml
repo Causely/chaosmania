@@ -30,17 +30,17 @@ spec:
           - "--header"
           - {{.Values.chaos.header| quote}}
           {{ end }}
-          {{ if .Values.chaos.pattern-duration }}
+          {{ if hasKey .Values.chaos "pattern_duration" }}
           - "--pattern-duration"
-          - {{.Values.chaos.pattern-duration| quote}}
-          {{ end }}
-          {{ if .Values.chaos.phase-pattern }}
+          - {{.Values.chaos.pattern_duration| quote}}
+          {{ end }}   
+          {{ if hasKey .Values.chaos "phase_pattern" }}
           - "--phase-pattern"
-          - {{.Values.chaos.phase-pattern| quote}}
+          - {{.Values.chaos.phase_pattern| quote}}
           {{ end }}
-          {{ if .Values.chaos.repeats-per-phase }}
+          {{ if hasKey .Values.chaos "repeats_per_phase" }}
           - "--repeats-per-phase"
-          - {{.Values.chaos.repeats-per-phase}}
+          - {{.Values.chaos.repeats_per_phase| quote}}
           {{ end }}
         env:
           {{- include "otel.env" . | nindent 10 }}

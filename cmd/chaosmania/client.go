@@ -23,6 +23,10 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+const (
+	MaxRepeatsPerPhase = 500
+)
+
 func loadPlan(logger *zap.Logger, path string) (actions.Plan, map[string]any, error) {
 	var plan actions.Plan
 	var raw map[string]any
@@ -208,7 +212,7 @@ loop:
 	}
 }
 
-func executePhase(logger *zap.Logger, phase actions.Phase, raw map[string]any, host string, port int64, header map[string]string, ctx context.Context) error {
+func executePhase(logger *zap.Logger, phase actions.Phase, raw map[string]any, host string, port int64, header map[string]string, ctx context.Context, adjustedDuration time.Duration) error {
 	logger.Info("")
 	logger.Info(fmt.Sprintf("Starting phase: %s", phase.Name))
 
@@ -226,16 +230,8 @@ func executePhase(logger *zap.Logger, phase actions.Phase, raw map[string]any, h
 	}
 
 	// Calculate and log phase duration
-	phaseDuration := calculatePhaseDuration(phase)
-	logger.Info(fmt.Sprintf("Phase total duration: %v", phaseDuration))
-
-	// Log worker durations
-	for i, w := range phase.Client.Workers {
-		logger.Info(fmt.Sprintf("Worker %d duration: %v", i+1, w.Duration))
-		if w.Duration > phaseDuration {
-			logger.Warn(fmt.Sprintf("Worker %d duration (%v) exceeds phase duration (%v)", i+1, w.Duration, phaseDuration))
-		}
-	}
+	originalDuration := calculatePhaseDuration(phase)
+	logger.Info(fmt.Sprintf("Phase duration: %v (original: %v)", adjustedDuration, originalDuration))
 
 	for i, w := range phase.Client.Workers {
 		logger.Info(fmt.Sprintf("Starting workers: %v", w.Instances))
@@ -399,37 +395,55 @@ func command_client(logger *zap.Logger, ctx *cli.Context) error {
 	phasePattern := ctx.String("phase-pattern")
 
 	// Validate repeats-per-phase
-	if repeatsPerPhase < 0 {
-		return fmt.Errorf("repeats-per-phase must be 0 (unlimited) or a positive number")
+	if repeatsPerPhase < -1 {
+		return fmt.Errorf("repeats-per-phase must be -1 (use plan values), 0 (unlimited), or a positive number")
 	}
-	if repeatsPerPhase > 500 {
-		return fmt.Errorf("repeats-per-phase cannot exceed 500")
-	}
-
-	// Validate phase pattern if specified
-	if phasePattern != "" {
-		switch actions.PhasePattern(phasePattern) {
-		case actions.PatternSequence, actions.PatternCycle, actions.PatternRandom:
-			// Valid patterns
-		default:
-			return fmt.Errorf("invalid phase pattern: %s. Must be one of: sequence, cycle, random", phasePattern)
-		}
+	if repeatsPerPhase > MaxRepeatsPerPhase {
+		return fmt.Errorf("repeats-per-phase cannot exceed %d", MaxRepeatsPerPhase)
 	}
 
-	headers := make(map[string]string)
-	for _, h := range header {
-		parts := strings.Split(h, ":")
-		headers[parts[0]] = parts[1]
-	}
-
+	// Load and validate plan
 	plan, raw, err := loadPlan(logger, planPath)
 	if err != nil {
 		return err
 	}
 
+	// Initialize phase repeats
+	phaseRepeats := actions.NewPhaseRepeats(1) // Default to 1 if not specified
+
+	// Handle repeats-per-phase flag
+	if repeatsPerPhase == 0 {
+		// Convert 0 (unlimited) to MaxRepeatsPerPhase
+		repeatsPerPhase = MaxRepeatsPerPhase
+		logger.Info(fmt.Sprintf("Converting unlimited repeats (0) to maximum allowed repeats (%d)", MaxRepeatsPerPhase))
+		phaseRepeats.DefaultRepeat = MaxRepeatsPerPhase
+	} else if repeatsPerPhase > 0 {
+		// Override all phase repeats with the flag value
+		phaseRepeats.DefaultRepeat = repeatsPerPhase
+		logger.Info(fmt.Sprintf("Overriding plan repeats with %d repeats per phase", repeatsPerPhase))
+	} else {
+		// Use plan values, but validate and normalize them
+		for i, phase := range plan.Phases {
+			repeat := int(phase.Repeat)
+			if repeat <= 0 {
+				repeat = 1 // Default to 1 if not specified or invalid
+			} else if repeat > MaxRepeatsPerPhase {
+				repeat = MaxRepeatsPerPhase // Cap at maximum
+				logger.Warn(fmt.Sprintf("Phase %d repeat count (%d) exceeds maximum, capping at %d", i+1, phase.Repeat, MaxRepeatsPerPhase))
+			}
+			phaseRepeats.SetRepeat(i, repeat)
+		}
+		logger.Info("Using repeat values from plan")
+	}
+
 	// Override pattern if specified
 	if phasePattern != "" {
-		plan.Pattern = actions.PhasePattern(phasePattern)
+		switch actions.PhasePattern(phasePattern) {
+		case actions.PatternSequence, actions.PatternCycle, actions.PatternRandom:
+			plan.Pattern = actions.PhasePattern(phasePattern)
+		default:
+			return fmt.Errorf("invalid phase pattern: %s. Must be one of: sequence, cycle, random", phasePattern)
+		}
 	}
 
 	// Set default pattern if not specified
@@ -437,9 +451,21 @@ func command_client(logger *zap.Logger, ctx *cli.Context) error {
 		plan.Pattern = actions.PatternSequence
 	}
 
+	// Create headers map
+	headers := make(map[string]string)
+	for _, h := range header {
+		parts := strings.Split(h, ":")
+		headers[parts[0]] = parts[1]
+	}
+
 	logger.Info("Successfully loaded execution plan")
 	logger.Info(fmt.Sprintf("Phases: %d", len(plan.Phases)))
 	logger.Info(fmt.Sprintf("Phase pattern: %s", plan.Pattern))
+
+	// Log phase repeat information
+	for i := range plan.Phases {
+		logger.Info(fmt.Sprintf("Phase %d will run %d times", i+1, phaseRepeats.GetRepeat(i)))
+	}
 
 	shutdown := InitOTLPProvider(logger)
 	defer shutdown()
@@ -466,43 +492,24 @@ func command_client(logger *zap.Logger, ctx *cli.Context) error {
 	// Log duration information
 	if patternDuration > 0 {
 		// Calculate actual total duration accounting for repeats
-		actualDuration := patternDuration
-		if repeatsPerPhase > 0 {
-			actualDuration = patternDuration * time.Duration(repeatsPerPhase)
-		}
+		totalRepeats := phaseRepeats.GetTotalRepeats(len(plan.Phases))
+		actualDuration := patternDuration * time.Duration(totalRepeats)
 		logger.Info(fmt.Sprintf("Pattern duration: %s", patternDuration))
-		if repeatsPerPhase > 0 {
-			logger.Info(fmt.Sprintf("Total runtime will be: %s (pattern duration × %d repeats)", actualDuration, repeatsPerPhase))
-		}
+		logger.Info(fmt.Sprintf("Total runtime will be: %s (pattern duration × %d total repeats)", actualDuration, totalRepeats))
 		for i, duration := range phaseDurations {
-			phaseActualDuration := duration
-			if repeatsPerPhase > 0 {
-				phaseActualDuration = duration * time.Duration(repeatsPerPhase)
-			}
-			logger.Info(fmt.Sprintf("Phase %d will run for: %s per execution", i+1, duration))
-			if repeatsPerPhase > 0 {
-				logger.Info(fmt.Sprintf("Phase %d total runtime: %s (%s × %d repeats)", i+1, phaseActualDuration, duration, repeatsPerPhase))
-			}
+			phaseActualDuration := duration * time.Duration(phaseRepeats.GetRepeat(i))
+			logger.Info(fmt.Sprintf("Phase %d total runtime: %s (%s × %d repeats)", i+1, phaseActualDuration, duration, phaseRepeats.GetRepeat(i)))
 		}
 	} else {
 		var totalSeconds int
-		for _, phase := range plan.Phases {
+		for i, phase := range plan.Phases {
 			var phaseSeconds int
 			for _, w := range phase.Client.Workers {
 				phaseSeconds += int(w.Duration.Seconds())
 			}
-			// If repeats-per-phase is set, use that value for each phase
-			phaseRepeats := int(phase.Repeat)
-			if repeatsPerPhase > 0 {
-				phaseRepeats = repeatsPerPhase
-			}
-			totalSeconds += phaseSeconds * phaseRepeats
+			totalSeconds += phaseSeconds * phaseRepeats.GetRepeat(i)
 		}
 		logger.Info(fmt.Sprintf("Total estimated execution time: %s", time.Duration(totalSeconds*int(time.Second))))
-	}
-
-	if repeatsPerPhase > 0 {
-		logger.Info(fmt.Sprintf("Each phase will run %d times", repeatsPerPhase))
 	}
 
 	// Create root context for cancellation propagation
@@ -521,8 +528,8 @@ func command_client(logger *zap.Logger, ctx *cli.Context) error {
 
 	for {
 		// Check if we've hit the repeat limit for current phase
-		if repeatsPerPhase > 0 && phaseExecutions[currentPhase] >= repeatsPerPhase {
-			nextPhase := patternExecutor.NextPhase(currentPhase, phaseExecutions, repeatsPerPhase)
+		if phaseExecutions[currentPhase] >= phaseRepeats.GetRepeat(currentPhase) {
+			nextPhase := patternExecutor.NextPhase(currentPhase, phaseExecutions, phaseRepeats)
 			if nextPhase == -1 {
 				logger.Info("All phases completed their repeats, stopping execution")
 				return nil
@@ -535,7 +542,7 @@ func command_client(logger *zap.Logger, ctx *cli.Context) error {
 		phaseCtx, phaseCancel := context.WithTimeout(rootCtx, phaseDurations[currentPhase])
 
 		// Execute current phase
-		err := executePhase(logger, plan.Phases[currentPhase], raw["phases"].([]any)[currentPhase].(map[string]any), host, port, headers, phaseCtx)
+		err := executePhase(logger, plan.Phases[currentPhase], raw["phases"].([]any)[currentPhase].(map[string]any), host, port, headers, phaseCtx, phaseDurations[currentPhase])
 
 		// Always cancel the phase context after execution
 		phaseCancel()
@@ -551,8 +558,8 @@ func command_client(logger *zap.Logger, ctx *cli.Context) error {
 		}
 
 		// Let the pattern executor decide if we should advance
-		if patternExecutor.ShouldAdvancePhase(currentPhase, phaseExecutions, repeatsPerPhase) {
-			nextPhase := patternExecutor.NextPhase(currentPhase, phaseExecutions, repeatsPerPhase)
+		if patternExecutor.ShouldAdvancePhase(currentPhase, phaseExecutions, phaseRepeats) {
+			nextPhase := patternExecutor.NextPhase(currentPhase, phaseExecutions, phaseRepeats)
 			if nextPhase == -1 {
 				logger.Info("All phases completed their repeats, stopping execution")
 				return nil

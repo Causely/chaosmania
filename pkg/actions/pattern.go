@@ -17,15 +17,58 @@ const (
 	PatternRandom PhasePattern = "random"
 )
 
+// PhaseRepeats defines how many times each phase should be repeated
+type PhaseRepeats struct {
+	// DefaultRepeat is used when no specific repeat is set for a phase
+	DefaultRepeat int
+	// PhaseRepeats maps phase index to its specific repeat count
+	PhaseRepeats map[int]int
+}
+
+// NewPhaseRepeats creates a new PhaseRepeats with the given default value
+func NewPhaseRepeats(defaultRepeat int) *PhaseRepeats {
+	return &PhaseRepeats{
+		DefaultRepeat: defaultRepeat,
+		PhaseRepeats:  make(map[int]int),
+	}
+}
+
+// GetRepeat returns the repeat count for a specific phase
+func (pr *PhaseRepeats) GetRepeat(phaseIndex int) int {
+	if repeat, ok := pr.PhaseRepeats[phaseIndex]; ok {
+		return repeat
+	}
+	return pr.DefaultRepeat
+}
+
+// GetTotalRepeats returns the total number of repeats across all phases
+func (pr *PhaseRepeats) GetTotalRepeats(numPhases int) int {
+	if len(pr.PhaseRepeats) == 0 {
+		// If no specific phase repeats are set, use default for all phases
+		return pr.DefaultRepeat * numPhases
+	}
+
+	// Sum up all phase-specific repeats
+	total := 0
+	for i := 0; i < numPhases; i++ {
+		total += pr.GetRepeat(i)
+	}
+	return total
+}
+
+// SetRepeat sets the repeat count for a specific phase
+func (pr *PhaseRepeats) SetRepeat(phaseIndex, repeat int) {
+	pr.PhaseRepeats[phaseIndex] = repeat
+}
+
 // PhasePatternExecutor defines the interface for executing phase patterns
 type PhasePatternExecutor interface {
 	// NextPhase returns the next phase index to execute, or -1 if no more phases should be executed
-	NextPhase(currentPhase int, phaseExecutions []int, repeatsPerPhase int) int
+	NextPhase(currentPhase int, phaseExecutions []int, repeats *PhaseRepeats) int
 	// IsComplete returns true if all phases have completed their required executions
-	IsComplete(phaseExecutions []int, repeatsPerPhase int) bool
+	IsComplete(phaseExecutions []int, repeats *PhaseRepeats) bool
 	// ShouldAdvancePhase returns true if the current phase should advance to the next phase
-	// This is called after a phase completes (either normally or due to timeout)
-	ShouldAdvancePhase(currentPhase int, phaseExecutions []int, repeatsPerPhase int) bool
+	ShouldAdvancePhase(currentPhase int, phaseExecutions []int, repeats *PhaseRepeats) bool
 }
 
 // SequencePattern implements sequential phase execution
@@ -37,7 +80,7 @@ func NewSequencePattern(numPhases int) *SequencePattern {
 	return &SequencePattern{numPhases: numPhases}
 }
 
-func (p *SequencePattern) NextPhase(currentPhase int, phaseExecutions []int, repeatsPerPhase int) int {
+func (p *SequencePattern) NextPhase(currentPhase int, phaseExecutions []int, repeats *PhaseRepeats) int {
 	nextPhase := currentPhase + 1
 	if nextPhase >= p.numPhases {
 		return -1
@@ -45,19 +88,16 @@ func (p *SequencePattern) NextPhase(currentPhase int, phaseExecutions []int, rep
 	return nextPhase
 }
 
-func (p *SequencePattern) IsComplete(phaseExecutions []int, repeatsPerPhase int) bool {
-	if repeatsPerPhase <= 0 {
-		return false
-	}
-	for _, execs := range phaseExecutions {
-		if execs < repeatsPerPhase {
+func (p *SequencePattern) IsComplete(phaseExecutions []int, repeats *PhaseRepeats) bool {
+	for i, execs := range phaseExecutions {
+		if execs < repeats.GetRepeat(i) {
 			return false
 		}
 	}
 	return true
 }
 
-func (p *SequencePattern) ShouldAdvancePhase(currentPhase int, phaseExecutions []int, repeatsPerPhase int) bool {
+func (p *SequencePattern) ShouldAdvancePhase(currentPhase int, phaseExecutions []int, repeats *PhaseRepeats) bool {
 	// For sequence pattern, always advance after a phase completes
 	return true
 }
@@ -71,10 +111,10 @@ func NewCyclePattern(numPhases int) *CyclePattern {
 	return &CyclePattern{numPhases: numPhases}
 }
 
-func (p *CyclePattern) NextPhase(currentPhase int, phaseExecutions []int, repeatsPerPhase int) int {
-	if repeatsPerPhase > 0 && phaseExecutions[currentPhase] >= repeatsPerPhase {
+func (p *CyclePattern) NextPhase(currentPhase int, phaseExecutions []int, repeats *PhaseRepeats) int {
+	if phaseExecutions[currentPhase] >= repeats.GetRepeat(currentPhase) {
 		nextPhase := (currentPhase + 1) % p.numPhases
-		if p.IsComplete(phaseExecutions, repeatsPerPhase) {
+		if p.IsComplete(phaseExecutions, repeats) {
 			return -1
 		}
 		return nextPhase
@@ -82,19 +122,16 @@ func (p *CyclePattern) NextPhase(currentPhase int, phaseExecutions []int, repeat
 	return (currentPhase + 1) % p.numPhases
 }
 
-func (p *CyclePattern) IsComplete(phaseExecutions []int, repeatsPerPhase int) bool {
-	if repeatsPerPhase <= 0 {
-		return false
-	}
-	for _, execs := range phaseExecutions {
-		if execs < repeatsPerPhase {
+func (p *CyclePattern) IsComplete(phaseExecutions []int, repeats *PhaseRepeats) bool {
+	for i, execs := range phaseExecutions {
+		if execs < repeats.GetRepeat(i) {
 			return false
 		}
 	}
 	return true
 }
 
-func (p *CyclePattern) ShouldAdvancePhase(currentPhase int, phaseExecutions []int, repeatsPerPhase int) bool {
+func (p *CyclePattern) ShouldAdvancePhase(currentPhase int, phaseExecutions []int, repeats *PhaseRepeats) bool {
 	// For cycle pattern, always advance after a phase completes
 	return true
 }
@@ -112,15 +149,11 @@ func NewRandomPattern(numPhases int) *RandomPattern {
 	}
 }
 
-func (p *RandomPattern) NextPhase(currentPhase int, phaseExecutions []int, repeatsPerPhase int) int {
-	if repeatsPerPhase <= 0 {
-		return p.rng.Intn(p.numPhases)
-	}
-
+func (p *RandomPattern) NextPhase(currentPhase int, phaseExecutions []int, repeats *PhaseRepeats) int {
 	// Find available phases that haven't completed their repeats
 	var availablePhases []int
 	for i, execs := range phaseExecutions {
-		if execs < repeatsPerPhase {
+		if execs < repeats.GetRepeat(i) {
 			availablePhases = append(availablePhases, i)
 		}
 	}
@@ -132,19 +165,16 @@ func (p *RandomPattern) NextPhase(currentPhase int, phaseExecutions []int, repea
 	return availablePhases[p.rng.Intn(len(availablePhases))]
 }
 
-func (p *RandomPattern) IsComplete(phaseExecutions []int, repeatsPerPhase int) bool {
-	if repeatsPerPhase <= 0 {
-		return false
-	}
-	for _, execs := range phaseExecutions {
-		if execs < repeatsPerPhase {
+func (p *RandomPattern) IsComplete(phaseExecutions []int, repeats *PhaseRepeats) bool {
+	for i, execs := range phaseExecutions {
+		if execs < repeats.GetRepeat(i) {
 			return false
 		}
 	}
 	return true
 }
 
-func (p *RandomPattern) ShouldAdvancePhase(currentPhase int, phaseExecutions []int, repeatsPerPhase int) bool {
+func (p *RandomPattern) ShouldAdvancePhase(currentPhase int, phaseExecutions []int, repeats *PhaseRepeats) bool {
 	// For random pattern, always advance after a phase completes
 	return true
 }

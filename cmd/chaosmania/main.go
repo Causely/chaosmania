@@ -64,7 +64,7 @@ func main() {
 				&cli.IntFlag{
 					Name:  "repeats-per-phase",
 					Usage: "Number of times to repeat each phase (0 for unlimited, max 500)",
-					Value: 0,
+					Value: -1,
 				},
 			},
 		}, {

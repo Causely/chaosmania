@@ -225,14 +225,26 @@ func executePhase(logger *zap.Logger, phase actions.Phase, raw map[string]any, h
 		allStatusCodes: make(map[int]int),
 	}
 
-	for _, w := range phase.Client.Workers {
+	// Calculate and log phase duration
+	phaseDuration := calculatePhaseDuration(phase)
+	logger.Info(fmt.Sprintf("Phase total duration: %v", phaseDuration))
+
+	// Log worker durations
+	for i, w := range phase.Client.Workers {
+		logger.Info(fmt.Sprintf("Worker %d duration: %v", i+1, w.Duration))
+		if w.Duration > phaseDuration {
+			logger.Warn(fmt.Sprintf("Worker %d duration (%v) exceeds phase duration (%v)", i+1, w.Duration, phaseDuration))
+		}
+	}
+
+	for i, w := range phase.Client.Workers {
 		logger.Info(fmt.Sprintf("Starting workers: %v", w.Instances))
 
 		// Run workload
 		var wg sync.WaitGroup
 		wg.Add(int(w.Instances))
 
-		// Create a child context with timeout that will be cancelled when parent is cancelled
+		// Create a worker-level context that will be cancelled when either the phase or worker duration is reached
 		workerCtx, cancel := context.WithTimeout(ctx, w.Duration)
 		defer cancel()
 
@@ -241,11 +253,14 @@ func executePhase(logger *zap.Logger, phase actions.Phase, raw map[string]any, h
 			return err
 		}
 
-		for i := 0; i < int(w.Instances); i++ {
-			go func(stats *statistics) {
+		for j := 0; j < int(w.Instances); j++ {
+			go func(workerNum int, stats *statistics) {
 				defer wg.Done()
 				runWorker(logger, stats, w.Timeout, workerCtx, w.Delay, host, port, payloadBytes, header)
-			}(&stats)
+				if workerCtx.Err() != nil {
+					logger.Info(fmt.Sprintf("Worker %d-%d completed due to: %v", i+1, workerNum+1, workerCtx.Err()))
+				}
+			}(j, &stats)
 		}
 
 		wg.Add(1)
@@ -281,12 +296,19 @@ func executePhase(logger *zap.Logger, phase actions.Phase, raw map[string]any, h
 					last = current
 					logger.Info(fmt.Sprintf("%.1f req/s, avg latency %v, %v errors, %v ok", float64(requests)/float64(interval), latency, errors, ok))
 				case <-workerCtx.Done():
+					logger.Info(fmt.Sprintf("Worker group %d completed due to: %v", i+1, workerCtx.Err()))
 					return
 				}
 			}
 		}(&stats)
 
 		wg.Wait()
+
+		// Check if phase context is done (phase duration reached)
+		if ctx.Err() != nil {
+			logger.Info(fmt.Sprintf("Phase completed due to: %v", ctx.Err()))
+			break
+		}
 	}
 
 	var a time.Duration
@@ -509,33 +531,33 @@ func command_client(logger *zap.Logger, ctx *cli.Context) error {
 			continue
 		}
 
-		// Execute current phase
+		// Create a phase context that will be cancelled when the phase duration is reached
 		phaseCtx, phaseCancel := context.WithTimeout(rootCtx, phaseDurations[currentPhase])
+
+		// Execute current phase
 		err := executePhase(logger, plan.Phases[currentPhase], raw["phases"].([]any)[currentPhase].(map[string]any), host, port, headers, phaseCtx)
+
+		// Always cancel the phase context after execution
 		phaseCancel()
 
-		if err != nil {
-			// Only treat deadline exceeded as success if this is the last execution
-			if err == context.DeadlineExceeded && patternDuration > 0 {
-				if repeatsPerPhase > 0 && patternExecutor.IsComplete(phaseExecutions, repeatsPerPhase) {
-					logger.Info("Test completed successfully after reaching specified pattern duration limit")
-					return nil
-				}
-				// For non-final executions, continue to the next phase
-				logger.Info(fmt.Sprintf("Phase %d completed after reaching its time limit, continuing to next phase", currentPhase+1))
-			} else {
-				return err
-			}
-		}
-
+		// Increment phase execution counter
 		phaseExecutions[currentPhase]++
 
-		// Get next phase based on pattern
-		nextPhase := patternExecutor.NextPhase(currentPhase, phaseExecutions, repeatsPerPhase)
-		if nextPhase == -1 {
-			logger.Info("All phases completed their repeats, stopping execution")
-			return nil
+		// Check if we should advance to the next phase
+		if err == context.DeadlineExceeded {
+			logger.Info(fmt.Sprintf("Phase %d completed after reaching its time limit", currentPhase+1))
+		} else if err != nil {
+			return err
 		}
-		currentPhase = nextPhase
+
+		// Let the pattern executor decide if we should advance
+		if patternExecutor.ShouldAdvancePhase(currentPhase, phaseExecutions, repeatsPerPhase) {
+			nextPhase := patternExecutor.NextPhase(currentPhase, phaseExecutions, repeatsPerPhase)
+			if nextPhase == -1 {
+				logger.Info("All phases completed their repeats, stopping execution")
+				return nil
+			}
+			currentPhase = nextPhase
+		}
 	}
 }

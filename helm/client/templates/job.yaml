@@ -30,6 +30,18 @@ spec:
           - "--header"
           - {{.Values.chaos.header| quote}}
           {{ end }}
+          {{ if .Values.chaos.pattern-duration }}
+          - "--pattern-duration"
+          - {{.Values.chaos.pattern-duration| quote}}
+          {{ end }}
+          {{ if .Values.chaos.phase-pattern }}
+          - "--phase-pattern"
+          - {{.Values.chaos.phase-pattern| quote}}
+          {{ end }}
+          {{ if .Values.chaos.repeats-per-phase }}
+          - "--repeats-per-phase"
+          - {{.Values.chaos.repeats-per-phase}}
+          {{ end }}
         env:
           {{- include "otel.env" . | nindent 10 }}
           - name: GOMAXPROCS

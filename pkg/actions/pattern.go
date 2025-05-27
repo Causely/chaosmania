@@ -23,6 +23,9 @@ type PhasePatternExecutor interface {
 	NextPhase(currentPhase int, phaseExecutions []int, repeatsPerPhase int) int
 	// IsComplete returns true if all phases have completed their required executions
 	IsComplete(phaseExecutions []int, repeatsPerPhase int) bool
+	// ShouldAdvancePhase returns true if the current phase should advance to the next phase
+	// This is called after a phase completes (either normally or due to timeout)
+	ShouldAdvancePhase(currentPhase int, phaseExecutions []int, repeatsPerPhase int) bool
 }
 
 // SequencePattern implements sequential phase execution
@@ -35,14 +38,11 @@ func NewSequencePattern(numPhases int) *SequencePattern {
 }
 
 func (p *SequencePattern) NextPhase(currentPhase int, phaseExecutions []int, repeatsPerPhase int) int {
-	if repeatsPerPhase > 0 && phaseExecutions[currentPhase] >= repeatsPerPhase {
-		nextPhase := currentPhase + 1
-		if nextPhase >= p.numPhases {
-			return -1
-		}
-		return nextPhase
+	nextPhase := currentPhase + 1
+	if nextPhase >= p.numPhases {
+		return -1
 	}
-	return currentPhase
+	return nextPhase
 }
 
 func (p *SequencePattern) IsComplete(phaseExecutions []int, repeatsPerPhase int) bool {
@@ -54,6 +54,11 @@ func (p *SequencePattern) IsComplete(phaseExecutions []int, repeatsPerPhase int)
 			return false
 		}
 	}
+	return true
+}
+
+func (p *SequencePattern) ShouldAdvancePhase(currentPhase int, phaseExecutions []int, repeatsPerPhase int) bool {
+	// For sequence pattern, always advance after a phase completes
 	return true
 }
 
@@ -86,6 +91,11 @@ func (p *CyclePattern) IsComplete(phaseExecutions []int, repeatsPerPhase int) bo
 			return false
 		}
 	}
+	return true
+}
+
+func (p *CyclePattern) ShouldAdvancePhase(currentPhase int, phaseExecutions []int, repeatsPerPhase int) bool {
+	// For cycle pattern, always advance after a phase completes
 	return true
 }
 
@@ -131,6 +141,11 @@ func (p *RandomPattern) IsComplete(phaseExecutions []int, repeatsPerPhase int) b
 			return false
 		}
 	}
+	return true
+}
+
+func (p *RandomPattern) ShouldAdvancePhase(currentPhase int, phaseExecutions []int, repeatsPerPhase int) bool {
+	// For random pattern, always advance after a phase completes
 	return true
 }
 

@@ -52,8 +52,8 @@ func main() {
 					Required: false,
 				},
 				&cli.StringFlag{
-					Name:  "pattern-duration",
-					Usage: "Duration for a single pattern execution (e.g., 1h, 30m). Total runtime will be this duration multiplied by repeats-per-phase.",
+					Name:  "runtime-duration",
+					Usage: "Duration for entire plan divided by phases and repeats equally (e.g., 1h, 30m). Total runtime will be this duration multiplied by repeats-per-phase.",
 					Value: "",
 				},
 				&cli.StringFlag{

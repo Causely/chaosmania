@@ -58,14 +58,14 @@ func (plan *Plan) Verify() error {
 		// Verify worker durations
 		for j, worker := range phase.Client.Workers {
 			if worker.Duration == 0 {
-				return fmt.Errorf("phase %d worker %d: duration is required", i+1, j+1)
+				return fmt.Errorf("phase %d worker %d: worker duration is required", i+1, j+1)
 			}
 			if worker.Duration < pkg.MinDuration {
-				return fmt.Errorf("phase %d worker %d: duration %v is less than minimum allowed duration %v",
+				return fmt.Errorf("phase %d worker %d: worker duration %v is less than minimum allowed duration %v (this will be adjusted at runtime)",
 					i+1, j+1, worker.Duration, pkg.MinDuration)
 			}
 			if worker.Duration > pkg.MaxDuration {
-				return fmt.Errorf("phase %d worker %d: duration %v exceeds maximum allowed duration %v",
+				return fmt.Errorf("phase %d worker %d: worker duration %v exceeds maximum allowed duration %v (this will be adjusted at runtime)",
 					i+1, j+1, worker.Duration, pkg.MaxDuration)
 			}
 		}

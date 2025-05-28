@@ -15,6 +15,9 @@ const (
 	PatternCycle PhasePattern = "cycle"
 	// PatternRandom randomly selects the next phase
 	PatternRandom PhasePattern = "random"
+
+	// MaxRepeatsPerPhase is the maximum number of times a phase can be repeated
+	MaxRepeatsPerPhase = 500
 )
 
 // PhaseRepeats defines how many times each phase should be repeated

@@ -3,92 +3,106 @@ package actions
 import (
 	"fmt"
 	"time"
+
+	"github.com/Causely/chaosmania/pkg"
 )
 
 const (
 	// MinPhaseDuration is the minimum allowed duration for any phase
-	MinPhaseDuration = 30 * time.Second
+	MinPhaseDuration = 60 * time.Second
 	// MaxPhaseDuration is the maximum allowed duration for any phase
 	MaxPhaseDuration = 672 * time.Hour // 28 days
 )
 
 // PhaseDurations manages duration calculations for phases
 type PhaseDurations struct {
-	// PatternDuration is the total duration for the pattern if overridden
-	PatternDuration time.Duration
+	// RuntimeDuration is the total duration for the entire plan if overridden
+	RuntimeDuration time.Duration
 	// plan is the execution plan
 	plan *Plan
 	// repeats is the number of repeats per phase
 	repeats *PhaseRepeats
 	// cachedDurations stores calculated durations for each phase
 	cachedDurations map[int]time.Duration
-	// AdjustedPatternDuration is the actual pattern duration after minimum/maximum validation
-	AdjustedPatternDuration time.Duration
+	// AdjustedRuntimeDuration is the actual runtime duration after minimum/maximum validation
+	AdjustedRuntimeDuration time.Duration
 }
 
 // NewPhaseDurations creates a new PhaseDurations instance
-func NewPhaseDurations(patternDuration time.Duration, plan *Plan, repeats *PhaseRepeats) *PhaseDurations {
+func NewPhaseDurations(runtimeDuration time.Duration, plan *Plan, repeats *PhaseRepeats) *PhaseDurations {
 	pd := &PhaseDurations{
-		PatternDuration: patternDuration,
+		RuntimeDuration: runtimeDuration,
 		plan:            plan,
 		repeats:         repeats,
 		cachedDurations: make(map[int]time.Duration),
 	}
 
-	// Calculate and validate pattern duration if overridden
-	if patternDuration > 0 {
-		totalRepeats := repeats.GetTotalRepeats(len(plan.Phases))
-		minTotalDuration := MinPhaseDuration * time.Duration(totalRepeats)
-		maxTotalDuration := MaxPhaseDuration * time.Duration(totalRepeats)
+	// Calculate total number of phase executions
+	totalExecutions := repeats.GetTotalRepeats(len(plan.Phases))
 
-		if patternDuration < minTotalDuration {
-			pd.AdjustedPatternDuration = minTotalDuration
-		} else if patternDuration > maxTotalDuration {
-			pd.AdjustedPatternDuration = maxTotalDuration
+	// Calculate and validate runtime duration if overridden
+	if runtimeDuration > 0 {
+		// Calculate minimum total runtime (1 minute per phase execution)
+		minTotalRuntime := pkg.MinDuration * time.Duration(totalExecutions)
+		// Calculate maximum total runtime (28 days)
+		maxTotalRuntime := pkg.MaxDuration
+
+		// Adjust runtime if needed
+		if runtimeDuration < minTotalRuntime {
+			pd.AdjustedRuntimeDuration = minTotalRuntime
+		} else if runtimeDuration > maxTotalRuntime {
+			pd.AdjustedRuntimeDuration = maxTotalRuntime
 		} else {
-			pd.AdjustedPatternDuration = patternDuration
+			pd.AdjustedRuntimeDuration = runtimeDuration
 		}
 	}
 
 	return pd
 }
 
-// GetPhaseDuration calculates the duration for a specific phase
-func (pd *PhaseDurations) GetPhaseDuration(phaseIndex int) time.Duration {
+// GetPhaseDuration returns the duration for a specific phase
+func (d *PhaseDurations) GetPhaseDuration(phaseIndex int) time.Duration {
 	// Return cached duration if available
-	if duration, ok := pd.cachedDurations[phaseIndex]; ok {
+	if duration, ok := d.cachedDurations[phaseIndex]; ok {
 		return duration
 	}
 
 	var duration time.Duration
-	if pd.PatternDuration > 0 {
-		// With pattern duration override, calculate based on total repeats
-		totalRepeats := pd.repeats.GetTotalRepeats(len(pd.plan.Phases))
-		// Each phase execution gets an equal share of the total duration
-		duration = pd.AdjustedPatternDuration / time.Duration(totalRepeats)
+	if d.RuntimeDuration > 0 {
+		// With runtime duration override, divide time equally among all phase executions
+		totalExecutions := d.repeats.GetTotalRepeats(len(d.plan.Phases))
+		duration = d.AdjustedRuntimeDuration / time.Duration(totalExecutions)
 	} else {
-		// Without override, use the phase's original duration
-		duration = calculatePhaseDuration(pd.plan.Phases[phaseIndex])
-		// If duration is 0 (missing) or below minimum, use minimum
-		if duration == 0 || duration < MinPhaseDuration {
-			duration = MinPhaseDuration
+		// Without override, use the phase's worker durations
+		var maxDuration time.Duration
+		for _, w := range d.plan.Phases[phaseIndex].Client.Workers {
+			if w.Duration == 0 {
+				// Missing duration defaults to minimum
+				maxDuration = pkg.MinDuration
+			} else if w.Duration > maxDuration {
+				maxDuration = w.Duration
+			}
 		}
+		duration = maxDuration
 	}
 
-	// Enforce maximum duration limit
-	if duration > MaxPhaseDuration {
-		duration = MaxPhaseDuration
+	// Ensure duration is within bounds
+	if duration < pkg.MinDuration {
+		duration = pkg.MinDuration
+	}
+	if duration > pkg.MaxDuration {
+		duration = pkg.MaxDuration
 	}
 
 	// Cache the calculated duration
-	pd.cachedDurations[phaseIndex] = duration
+	d.cachedDurations[phaseIndex] = duration
 	return duration
 }
 
 // GetTotalDuration calculates the total duration across all phases
 func (pd *PhaseDurations) GetTotalDuration() time.Duration {
-	if pd.PatternDuration > 0 {
-		return pd.AdjustedPatternDuration
+	if pd.RuntimeDuration > 0 {
+		return pd.AdjustedRuntimeDuration
 	}
 
 	var total time.Duration
@@ -105,11 +119,11 @@ func (pd *PhaseDurations) GetPhaseTotalDuration(phaseIndex int) time.Duration {
 
 // String returns a string representation of the phase durations
 func (pd *PhaseDurations) String() string {
-	if pd.PatternDuration > 0 {
-		if pd.AdjustedPatternDuration != pd.PatternDuration {
-			return fmt.Sprintf("Pattern duration: %s (adjusted from %s due to minimum/maximum limits)", pd.AdjustedPatternDuration, pd.PatternDuration)
+	if pd.RuntimeDuration > 0 {
+		if pd.AdjustedRuntimeDuration != pd.RuntimeDuration {
+			return fmt.Sprintf("Runtime duration: %s (adjusted from %s due to minimum/maximum limits)", pd.AdjustedRuntimeDuration, pd.RuntimeDuration)
 		}
-		return fmt.Sprintf("Pattern duration: %s", pd.PatternDuration)
+		return fmt.Sprintf("Runtime duration: %s", pd.RuntimeDuration)
 	}
 
 	var s string

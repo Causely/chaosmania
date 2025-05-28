@@ -22,10 +22,6 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-const (
-	MaxRepeatsPerPhase = 500
-)
-
 func loadPlan(logger *zap.Logger, path string) (actions.Plan, map[string]any, error) {
 	var plan actions.Plan
 	var raw map[string]any

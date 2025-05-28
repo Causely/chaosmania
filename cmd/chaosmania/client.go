@@ -212,7 +212,7 @@ loop:
 	}
 }
 
-func executePhase(logger *zap.Logger, phase actions.Phase, raw map[string]any, host string, port int64, header map[string]string, ctx context.Context, adjustedDuration time.Duration) error {
+func executePhase(logger *zap.Logger, phase actions.Phase, raw map[string]any, host string, port int64, header map[string]string, ctx context.Context, durations *actions.PhaseDurations, phaseIndex int) error {
 	logger.Info("")
 	logger.Info(fmt.Sprintf("Starting phase: %s", phase.Name))
 
@@ -229,9 +229,9 @@ func executePhase(logger *zap.Logger, phase actions.Phase, raw map[string]any, h
 		allStatusCodes: make(map[int]int),
 	}
 
-	// Calculate and log phase duration
-	originalDuration := calculatePhaseDuration(phase)
-	logger.Info(fmt.Sprintf("Phase duration: %v (original: %v)", adjustedDuration, originalDuration))
+	// Get phase duration from PhaseDurations
+	phaseDuration := durations.GetPhaseDuration(phaseIndex)
+	logger.Info(fmt.Sprintf("Phase duration: %s", phaseDuration))
 
 	for i, w := range phase.Client.Workers {
 		logger.Info(fmt.Sprintf("Starting workers: %v", w.Instances))
@@ -462,11 +462,6 @@ func command_client(logger *zap.Logger, ctx *cli.Context) error {
 	logger.Info(fmt.Sprintf("Phases: %d", len(plan.Phases)))
 	logger.Info(fmt.Sprintf("Phase pattern: %s", plan.Pattern))
 
-	// Log phase repeat information
-	for i := range plan.Phases {
-		logger.Info(fmt.Sprintf("Phase %d will run %d times", i+1, phaseRepeats.GetRepeat(i)))
-	}
-
 	shutdown := InitOTLPProvider(logger)
 	defer shutdown()
 
@@ -486,30 +481,25 @@ func command_client(logger *zap.Logger, ctx *cli.Context) error {
 		patternDuration = duration
 	}
 
-	// Calculate phase durations upfront
-	phaseDurations := calculatePhaseDurations(plan, patternDuration, repeatsPerPhase)
+	// Create PhaseDurations instance for all duration calculations
+	durations := actions.NewPhaseDurations(patternDuration, &plan, phaseRepeats)
 
 	// Log duration information
 	if patternDuration > 0 {
-		// Calculate actual total duration accounting for repeats
 		totalRepeats := phaseRepeats.GetTotalRepeats(len(plan.Phases))
-		actualDuration := patternDuration * time.Duration(totalRepeats)
-		logger.Info(fmt.Sprintf("Pattern duration: %s", patternDuration))
-		logger.Info(fmt.Sprintf("Total runtime will be: %s (pattern duration × %d total repeats)", actualDuration, totalRepeats))
-		for i, duration := range phaseDurations {
-			phaseActualDuration := duration * time.Duration(phaseRepeats.GetRepeat(i))
-			logger.Info(fmt.Sprintf("Phase %d total runtime: %s (%s × %d repeats)", i+1, phaseActualDuration, duration, phaseRepeats.GetRepeat(i)))
+		if durations.PatternDuration != durations.AdjustedPatternDuration {
+			logger.Info(fmt.Sprintf("Pattern duration: %s (adjusted from %s due to minimum/maximum limits)", durations.AdjustedPatternDuration, durations.PatternDuration))
+		} else {
+			logger.Info(fmt.Sprintf("Pattern duration: %s", durations.PatternDuration))
+		}
+		logger.Info(fmt.Sprintf("Total runtime will be: %s (pattern duration × %d total repeats)", durations.AdjustedPatternDuration, totalRepeats))
+		for i := range plan.Phases {
+			phaseTotalDuration := durations.GetPhaseTotalDuration(i)
+			logger.Info(fmt.Sprintf("Phase %d total runtime: %s (%s × %d repeats)", i+1, phaseTotalDuration, durations.GetPhaseDuration(i), phaseRepeats.GetRepeat(i)))
 		}
 	} else {
-		var totalSeconds int
-		for i, phase := range plan.Phases {
-			var phaseSeconds int
-			for _, w := range phase.Client.Workers {
-				phaseSeconds += int(w.Duration.Seconds())
-			}
-			totalSeconds += phaseSeconds * phaseRepeats.GetRepeat(i)
-		}
-		logger.Info(fmt.Sprintf("Total estimated execution time: %s", time.Duration(totalSeconds*int(time.Second))))
+		totalDuration := durations.GetTotalDuration()
+		logger.Info(fmt.Sprintf("Total estimated execution time: %s", totalDuration))
 	}
 
 	// Create root context for cancellation propagation
@@ -538,11 +528,14 @@ func command_client(logger *zap.Logger, ctx *cli.Context) error {
 			continue
 		}
 
+		// Get the duration for this phase
+		phaseDuration := durations.GetPhaseDuration(currentPhase)
+
 		// Create a phase context that will be cancelled when the phase duration is reached
-		phaseCtx, phaseCancel := context.WithTimeout(rootCtx, phaseDurations[currentPhase])
+		phaseCtx, phaseCancel := context.WithTimeout(rootCtx, phaseDuration)
 
 		// Execute current phase
-		err := executePhase(logger, plan.Phases[currentPhase], raw["phases"].([]any)[currentPhase].(map[string]any), host, port, headers, phaseCtx, phaseDurations[currentPhase])
+		err := executePhase(logger, plan.Phases[currentPhase], raw["phases"].([]any)[currentPhase].(map[string]any), host, port, headers, phaseCtx, durations, currentPhase)
 
 		// Always cancel the phase context after execution
 		phaseCancel()

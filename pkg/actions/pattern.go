@@ -81,6 +81,12 @@ func NewSequencePattern(numPhases int) *SequencePattern {
 }
 
 func (p *SequencePattern) NextPhase(currentPhase int, phaseExecutions []int, repeats *PhaseRepeats) int {
+	// If current phase hasn't completed its repeats, stay on it
+	if phaseExecutions[currentPhase] < repeats.GetRepeat(currentPhase) {
+		return currentPhase
+	}
+
+	// Move to next phase
 	nextPhase := currentPhase + 1
 	if nextPhase >= p.numPhases {
 		return -1
@@ -98,8 +104,8 @@ func (p *SequencePattern) IsComplete(phaseExecutions []int, repeats *PhaseRepeat
 }
 
 func (p *SequencePattern) ShouldAdvancePhase(currentPhase int, phaseExecutions []int, repeats *PhaseRepeats) bool {
-	// For sequence pattern, always advance after a phase completes
-	return true
+	// For sequence pattern, only advance when current phase has completed its repeats
+	return phaseExecutions[currentPhase] >= repeats.GetRepeat(currentPhase)
 }
 
 // CyclePattern implements cycling through phases

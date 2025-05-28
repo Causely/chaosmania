@@ -6,6 +6,11 @@ import (
 	"time"
 )
 
+const (
+	MinDuration = 1 * time.Minute
+	MaxDuration = 28 * 24 * time.Hour
+)
+
 func ConfigToMap[T any](data *T) (map[string]any, error) {
 	jsonString, err := json.Marshal(data)
 	if err != nil {
@@ -62,6 +67,14 @@ func (duration *Duration) UnmarshalJSON(b []byte) error {
 		}
 	default:
 		return fmt.Errorf("invalid duration: %#v", unmarshalledJson)
+	}
+
+	// Validate duration limits
+	if duration.Duration < MinDuration {
+		return fmt.Errorf("duration %v is less than minimum allowed duration %v", duration.Duration, MinDuration)
+	}
+	if duration.Duration > MaxDuration {
+		return fmt.Errorf("duration %v exceeds maximum allowed duration %v", duration.Duration, MaxDuration)
 	}
 
 	return nil

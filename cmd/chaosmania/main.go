@@ -51,6 +51,21 @@ func main() {
 					Usage:    "Headers to include in the request",
 					Required: false,
 				},
+				&cli.StringFlag{
+					Name:  "runtime-duration",
+					Usage: "Duration for entire plan divided by phases and repeats equally (e.g., 1h, 30m). Total runtime will be this duration multiplied by repeats-per-phase.",
+					Value: "",
+				},
+				&cli.StringFlag{
+					Name:  "phase-pattern",
+					Usage: "Override the phase pattern (sequence, cycle, random)",
+					Value: "",
+				},
+				&cli.IntFlag{
+					Name:  "repeats-per-phase",
+					Usage: "Number of times to repeat each phase (0 for unlimited, max 500)",
+					Value: -1,
+				},
 			},
 		}, {
 			Name: "server",

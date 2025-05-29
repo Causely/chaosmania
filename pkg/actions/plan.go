@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/Causely/chaosmania/pkg"
 	"github.com/Causely/chaosmania/pkg/logger"
 	"github.com/rotisserie/eris"
 	"go.uber.org/zap"
@@ -46,12 +47,29 @@ type Client struct {
 	Workers []Workers `yaml:"workers" json:"workers"`
 }
 
+// Plan defines the structure of a chaos test plan
 type Plan struct {
-	Phases []Phase `json:"phases"`
+	Pattern PhasePattern `yaml:"pattern"`
+	Phases  []Phase      `yaml:"phases"`
 }
 
 func (plan *Plan) Verify() error {
-	for _, phase := range plan.Phases {
+	for i, phase := range plan.Phases {
+		// Verify worker durations
+		for j, worker := range phase.Client.Workers {
+			if worker.Duration == 0 {
+				return fmt.Errorf("phase %d worker %d: worker duration is required", i+1, j+1)
+			}
+			if worker.Duration < pkg.MinDuration {
+				return fmt.Errorf("phase %d worker %d: worker duration %v is less than minimum allowed duration %v (this will be adjusted at runtime)",
+					i+1, j+1, worker.Duration, pkg.MinDuration)
+			}
+			if worker.Duration > pkg.MaxDuration {
+				return fmt.Errorf("phase %d worker %d: worker duration %v exceeds maximum allowed duration %v (this will be adjusted at runtime)",
+					i+1, j+1, worker.Duration, pkg.MaxDuration)
+			}
+		}
+
 		err := phase.Verify()
 		if err != nil {
 			return err

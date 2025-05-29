@@ -6,6 +6,11 @@ import (
 	"time"
 )
 
+const (
+	MinDuration = 1 * time.Minute
+	MaxDuration = 28 * 24 * time.Hour
+)
+
 func ConfigToMap[T any](data *T) (map[string]any, error) {
 	jsonString, err := json.Marshal(data)
 	if err != nil {

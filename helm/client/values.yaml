@@ -20,7 +20,7 @@ chaos:
   plans: "plans/*.yaml"
   scenarios: "scenarios/**.yaml"
   header: ""
-  # pattern_duration: ""   # 1h, 30m, 10m, 5m, 1m, 30s, 10s, 5s, 1s
+  # runtime_duration: ""   # 1h, 30m, 10m, 5m, 1m, 30s, 10s, 5s, 1s
   # phase_pattern: ""      # sequence, cycle, random
   # repeats_per_phase: 1   # 0 for unlimited, max 500
 

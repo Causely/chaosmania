@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Causely/chaosmania/pkg"
 	"github.com/Causely/chaosmania/pkg/logger"
 	"github.com/rotisserie/eris"
 	"go.uber.org/zap"
@@ -60,13 +59,13 @@ func (plan *Plan) Verify() error {
 			if worker.Duration == 0 {
 				return fmt.Errorf("phase %d worker %d: worker duration is required", i+1, j+1)
 			}
-			if worker.Duration < pkg.MinDuration {
+			if worker.Duration < MinPhaseDuration {
 				return fmt.Errorf("phase %d worker %d: worker duration %v is less than minimum allowed duration %v (this will be adjusted at runtime)",
-					i+1, j+1, worker.Duration, pkg.MinDuration)
+					i+1, j+1, worker.Duration, MinPhaseDuration)
 			}
-			if worker.Duration > pkg.MaxDuration {
+			if worker.Duration > MaxPhaseDuration {
 				return fmt.Errorf("phase %d worker %d: worker duration %v exceeds maximum allowed duration %v (this will be adjusted at runtime)",
-					i+1, j+1, worker.Duration, pkg.MaxDuration)
+					i+1, j+1, worker.Duration, MaxPhaseDuration)
 			}
 		}
 

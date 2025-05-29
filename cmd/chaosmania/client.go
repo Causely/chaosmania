@@ -360,11 +360,11 @@ func command_client(logger *zap.Logger, ctx *cli.Context) error {
 		if err != nil {
 			return fmt.Errorf("invalid duration format: %w", err)
 		}
-		if duration < time.Second {
-			return fmt.Errorf("duration must be at least 1 second")
+		if duration < pkg.MinPhaseDuration {
+			return fmt.Errorf("duration must be at least %v", pkg.MinPhaseDuration)
 		}
-		if duration > 28*24*time.Hour {
-			return fmt.Errorf("duration cannot exceed 28 days")
+		if duration > pkg.MaxPhaseDuration {
+			return fmt.Errorf("duration cannot exceed %v", pkg.MaxPhaseDuration)
 		}
 		runtimeDuration = duration
 	}

@@ -7,13 +7,6 @@ import (
 	"github.com/Causely/chaosmania/pkg"
 )
 
-const (
-	// MinPhaseDuration is the minimum allowed duration for any phase
-	MinPhaseDuration = 60 * time.Second
-	// MaxPhaseDuration is the maximum allowed duration for any phase
-	MaxPhaseDuration = 672 * time.Hour // 28 days
-)
-
 // PhaseDurations manages duration calculations for phases
 type PhaseDurations struct {
 	// RuntimeDuration is the total duration for the entire plan if overridden
@@ -43,9 +36,9 @@ func NewPhaseDurations(runtimeDuration time.Duration, plan *Plan, repeats *Phase
 	// Calculate and validate runtime duration if overridden
 	if runtimeDuration > 0 {
 		// Calculate minimum total runtime (1 minute per phase execution)
-		minTotalRuntime := pkg.MinDuration * time.Duration(totalExecutions)
+		minTotalRuntime := pkg.MinPhaseDuration * time.Duration(totalExecutions)
 		// Calculate maximum total runtime (28 days)
-		maxTotalRuntime := pkg.MaxDuration
+		maxTotalRuntime := pkg.MaxPhaseDuration
 
 		// Adjust runtime if needed
 		if runtimeDuration < minTotalRuntime {
@@ -78,7 +71,7 @@ func (d *PhaseDurations) GetPhaseDuration(phaseIndex int) time.Duration {
 		for _, w := range d.plan.Phases[phaseIndex].Client.Workers {
 			if w.Duration == 0 {
 				// Missing duration defaults to minimum
-				maxDuration = pkg.MinDuration
+				maxDuration = pkg.MinPhaseDuration
 			} else if w.Duration > maxDuration {
 				maxDuration = w.Duration
 			}
@@ -87,11 +80,11 @@ func (d *PhaseDurations) GetPhaseDuration(phaseIndex int) time.Duration {
 	}
 
 	// Ensure duration is within bounds
-	if duration < pkg.MinDuration {
-		duration = pkg.MinDuration
+	if duration < pkg.MinPhaseDuration {
+		duration = pkg.MinPhaseDuration
 	}
-	if duration > pkg.MaxDuration {
-		duration = pkg.MaxDuration
+	if duration > pkg.MaxPhaseDuration {
+		duration = pkg.MaxPhaseDuration
 	}
 
 	// Cache the calculated duration

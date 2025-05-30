@@ -30,9 +30,9 @@ spec:
           - "--header"
           - {{.Values.chaos.header| quote}}
           {{ end }}
-          {{ if hasKey .Values.chaos "pattern_duration" }}
-          - "--pattern-duration"
-          - {{.Values.chaos.pattern_duration| quote}}
+          {{ if hasKey .Values.chaos "runtime_duration" }}
+          - "--runtime-duration"
+          - {{.Values.chaos.runtime_duration| quote}}
           {{ end }}   
           {{ if hasKey .Values.chaos "phase_pattern" }}
           - "--phase-pattern"

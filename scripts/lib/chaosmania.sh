@@ -9,7 +9,7 @@ parse_args() {
     PREFIX_USER=false
     REPEATS_PER_PHASE=""
     PHASE_PATTERN=""
-    PATTERN_DURATION=""
+    RUNTIME_DURATION=""
 
     for arg in "$@"; do
         case $arg in
@@ -25,8 +25,8 @@ parse_args() {
                 export PHASE_PATTERN=$2
                 shift 2
                 ;;
-            --pattern-duration)
-                export PATTERN_DURATION=$2
+            --runtime-duration)
+                export RUNTIME_DURATION=$2
                 shift 2
                 ;;
         esac
@@ -59,8 +59,8 @@ build_client_args() {
     if [ ! -z "$PHASE_PATTERN" ]; then
         CLIENT_ARGS="$CLIENT_ARGS --set chaos.phase_pattern=$PHASE_PATTERN"
     fi
-    if [ ! -z "$PATTERN_DURATION" ]; then
-        CLIENT_ARGS="$CLIENT_ARGS --set chaos.pattern_duration=$PATTERN_DURATION"
+    if [ ! -z "$RUNTIME_DURATION" ]; then
+        CLIENT_ARGS="$CLIENT_ARGS --set chaos.pattern_duration=$RUNTIME_DURATION"
     fi
     echo "$CLIENT_ARGS"
 }

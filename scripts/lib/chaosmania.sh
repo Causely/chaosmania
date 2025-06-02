@@ -98,7 +98,7 @@ upgrade_client() {
     helm delete --namespace $NAMESPACE $CLIENT_NAME || true
     helm upgrade --install --namespace $NAMESPACE \
         --set image.tag=$IMAGE_TAG \
-        --set chaos.host=$CHAOS_HOST.$NAMESPACE.svc.cluster.local \
+        --set chaos.host=$CHAOS_HOST.$NAMESPACE.svc.cluster.local. \
         --set chaos.plan=$PLAN_PATH \
         --set business_application=$SCENARIO \
         --set otlp.enabled=true \

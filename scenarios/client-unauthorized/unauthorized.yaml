@@ -11,15 +11,9 @@ phases:
 
     workload:
       actions:
-        # Send request to single service
-        - name: HTTPRequest
+        - name: Burn
           config:
-            url: http://single:8080
-            body:
-              actions:
-                - name: Burn
-                  config:
-                    duration: 1ms
-                - name: HTTPResponse
-                  config:
-                    statusCode: 401
+            duration: 1ms
+        - name: HTTPResponse
+          config:
+            statusCode: 401

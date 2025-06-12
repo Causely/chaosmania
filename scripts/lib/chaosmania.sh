@@ -60,7 +60,7 @@ build_client_args() {
         CLIENT_ARGS="$CLIENT_ARGS --set chaos.phase_pattern=$PHASE_PATTERN"
     fi
     if [ ! -z "$RUNTIME_DURATION" ]; then
-        CLIENT_ARGS="$CLIENT_ARGS --set chaos.pattern_duration=$RUNTIME_DURATION"
+        CLIENT_ARGS="$CLIENT_ARGS --set chaos.runtime_duration=$RUNTIME_DURATION"
     fi
     echo "$CLIENT_ARGS"
 }

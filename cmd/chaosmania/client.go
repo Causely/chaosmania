@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/http/pprof"
 	"os"
 	"strings"
 	"sync"
@@ -21,6 +22,18 @@ import (
 	httptrace "gopkg.in/DataDog/dd-trace-go.v1/contrib/net/http"
 	"gopkg.in/yaml.v2"
 )
+
+func startPprofServer() {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/debug/pprof/", pprof.Index)
+	mux.HandleFunc("/debug/pprof/profile", pprof.Profile)
+	mux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
+	mux.HandleFunc("/debug/pprof/trace", pprof.Trace)
+	server := &http.Server{Addr: ":8080", Handler: mux}
+	go func() {
+		_ = server.ListenAndServe()
+	}()
+}
 
 func loadPlan(logger *zap.Logger, path string) (actions.Plan, map[string]any, error) {
 	var plan actions.Plan
@@ -230,6 +243,9 @@ func executePhase(logger *zap.Logger, phase actions.Phase, raw map[string]any, h
 	// Log phase start with reporter
 	reporter.LogPhaseStart(phaseIndex)
 
+	// Create a WaitGroup for all workers
+	var allWorkersWg sync.WaitGroup
+
 	for i, w := range phase.Client.Workers {
 		logger.Info(fmt.Sprintf("Starting workers: %v", w.Instances))
 
@@ -246,19 +262,12 @@ func executePhase(logger *zap.Logger, phase actions.Phase, raw map[string]any, h
 			return err
 		}
 
-		for j := 0; j < int(w.Instances); j++ {
-			go func(workerNum int, stats *statistics) {
-				defer wg.Done()
-				runWorker(logger, stats, w.Timeout, workerCtx, w.Delay, host, port, payloadBytes, header)
-				if workerCtx.Err() != nil {
-					logger.Debug(fmt.Sprintf("Worker %d-%d completed due to: %v", i+1, workerNum+1, workerCtx.Err()))
-				}
-			}(j, &stats)
-		}
-
-		wg.Add(1)
+		// Start statistics reporter
+		statsDone := make(chan struct{})
+		allWorkersWg.Add(1)
 		go func(stats *statistics) {
-			defer wg.Done()
+			defer allWorkersWg.Done()
+			defer close(statsDone)
 
 			var last statisticCounters
 			interval := 10
@@ -283,7 +292,11 @@ func executePhase(logger *zap.Logger, phase actions.Phase, raw map[string]any, h
 					var ok uint64
 					if requests > 0 {
 						latency = time.Duration(int64(duration/requests)) * time.Microsecond
-						ok = requests - errors
+						if errors > requests {
+							ok = 0 // Handle case where errors > requests
+						} else {
+							ok = requests - errors
+						}
 					}
 
 					last = current
@@ -295,6 +308,20 @@ func executePhase(logger *zap.Logger, phase actions.Phase, raw map[string]any, h
 			}
 		}(&stats)
 
+		// Start workers
+		for j := 0; j < int(w.Instances); j++ {
+			allWorkersWg.Add(1)
+			go func(workerNum int, stats *statistics) {
+				defer wg.Done()
+				defer allWorkersWg.Done()
+				runWorker(logger, stats, w.Timeout, workerCtx, w.Delay, host, port, payloadBytes, header)
+				if workerCtx.Err() != nil {
+					logger.Debug(fmt.Sprintf("Worker %d-%d completed due to: %v", i+1, workerNum+1, workerCtx.Err()))
+				}
+			}(j, &stats)
+		}
+
+		// Wait for current worker group to complete
 		wg.Wait()
 
 		// Check if phase context is done (phase duration reached)
@@ -303,6 +330,9 @@ func executePhase(logger *zap.Logger, phase actions.Phase, raw map[string]any, h
 			break
 		}
 	}
+
+	// Wait for all workers and stats reporters to complete
+	allWorkersWg.Wait()
 
 	var a time.Duration
 	successfulRequests := stats.counters.Requests - stats.counters.Errors
@@ -345,6 +375,7 @@ func command_client(logger *zap.Logger, ctx *cli.Context) error {
 	repeatsPerPhase := ctx.Int("repeats-per-phase")
 	phasePattern := ctx.String("phase-pattern")
 
+	startPprofServer()
 	// Validate repeats-per-phase
 	if repeatsPerPhase < -1 {
 		return fmt.Errorf("repeats-per-phase must be -1 (use plan values), 0 (unlimited), or a positive number")
@@ -469,6 +500,7 @@ func command_client(logger *zap.Logger, ctx *cli.Context) error {
 		phaseCtx, phaseCancel := context.WithTimeout(rootCtx, phaseDuration)
 
 		// Execute current phase
+		logger.Info(fmt.Sprintf("Executing phase %d for %.0f seconds", currentPhase+1, phaseDuration.Seconds()))
 		err := executePhase(logger, plan.Phases[currentPhase], raw["phases"].([]any)[currentPhase].(map[string]any), host, port, headers, phaseCtx, durations, currentPhase, reporter)
 
 		// Always cancel the phase context after execution

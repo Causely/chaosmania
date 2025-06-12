@@ -29,6 +29,10 @@ parse_args() {
                 export RUNTIME_DURATION=$2
                 shift 2
                 ;;
+            --otlp-endpoint)
+                export OTLP_ENDPOINT=$2
+                shift 2
+                ;;
         esac
     done
 }
@@ -36,12 +40,15 @@ parse_args() {
 # Setup namespace
 setup_namespace() {
     local SCENARIO=$1
+    salt=$(uuidgen | cut -d '-' -f 1 | tr '[:upper:]' '[:lower:]')
 
     if [ "$PREFIX_USER" = true ]; then
         export NAMESPACE=$USER-$SCENARIO
     else
         export NAMESPACE=$SCENARIO
     fi
+
+    export NAMESPACE=$NAMESPACE-$salt
 
     echo "Creating namespace $NAMESPACE"
     kubectl create namespace $NAMESPACE || true
@@ -61,6 +68,9 @@ build_client_args() {
     fi
     if [ ! -z "$RUNTIME_DURATION" ]; then
         CLIENT_ARGS="$CLIENT_ARGS --set chaos.runtime_duration=$RUNTIME_DURATION"
+    fi
+    if [ ! -z "$OTLP_ENDPOINT" ]; then
+        CLIENT_ARGS="$CLIENT_ARGS --set otlp.endpoint=$OTLP_ENDPOINT"
     fi
     echo "$CLIENT_ARGS"
 }
@@ -98,7 +108,7 @@ upgrade_client() {
     helm delete --namespace $NAMESPACE $CLIENT_NAME || true
     helm upgrade --install --namespace $NAMESPACE \
         --set image.tag=$IMAGE_TAG \
-        --set chaos.host=$CHAOS_HOST.$NAMESPACE.svc.cluster.local. \
+        --set chaos.host=$CHAOS_HOST \
         --set chaos.plan=$PLAN_PATH \
         --set business_application=$SCENARIO \
         --set otlp.enabled=true \

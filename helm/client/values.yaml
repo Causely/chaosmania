@@ -26,5 +26,5 @@ chaos:
 
 otlp:
   enabled: false
-  endpoint: http://opentelemetry-collector.default:4318
+  endpoint: http://alloy.monitoring:4318
   insecure: true

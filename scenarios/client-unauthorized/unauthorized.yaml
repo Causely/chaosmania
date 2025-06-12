@@ -7,7 +7,7 @@ phases:
       workers:
         - instances: 3
           duration: 1h
-          delay: 500ms
+          delay: 100ms
 
     workload:
       actions:

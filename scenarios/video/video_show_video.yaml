@@ -2,7 +2,7 @@ phases:
 - client:
     workers:
     - delay: 2ms
-      duration: 1200h
+      duration: 672h
       instances: 1
   name: phase1
   setup:

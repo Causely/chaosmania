@@ -3,7 +3,6 @@ package actions
 import (
 	"context"
 	"math/rand"
-	"os"
 
 	"github.com/Causely/chaosmania/pkg"
 	"github.com/Causely/chaosmania/pkg/logger"
@@ -26,7 +25,9 @@ func (a *Panic) Execute(ctx context.Context, cfg map[string]any) error {
 
 	if config.Probability > 0 {
 		if rand.Float64() < config.Probability {
-			os.Exit(1)
+			go func() {
+				panic("Failed to execute action")
+			}()
 		}
 	}
 

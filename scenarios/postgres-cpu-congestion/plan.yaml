@@ -1,0 +1,52 @@
+---
+phases:
+  - name: setup
+
+    client:
+      workers:
+        - instances: 1
+          duration: 12h
+          delay: 0s
+
+    setup:
+      actions:
+        - name: PostgresqlQuery
+          config:
+            host: postgres-postgresql
+            port: 5432
+            dbname: postgres
+            user: postgres
+            password: postgres
+            query: |
+              CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
+
+              -- Drop and create the CPU stress test table
+              DROP TABLE IF EXISTS cpu_stress_test;
+
+              CREATE TABLE cpu_stress_test AS
+              SELECT generate_series(1, 1000000) AS id, md5(random()::text) AS data;
+
+              -- Indexes (helpful for the optimized query)
+              CREATE INDEX IF NOT EXISTS idx_cpu_stress_id ON cpu_stress_test(id);
+              CREATE INDEX IF NOT EXISTS idx_cpu_stress_data ON cpu_stress_test(data);
+
+    workload:
+      actions:
+        - name: HTTPRequest
+          config:
+            url: http://payment:8080
+            body:
+              actions:
+              - name: PostgresqlQuery
+                config:
+                  host: postgres-postgresql
+                  port: 5432
+                  dbname: postgres
+                  user: postgres
+                  password: postgres
+                  query: |
+                    -- Intentionally CPU-heavy join (small subset)
+                    SELECT COUNT(*)
+                    FROM cpu_stress_test a
+                    JOIN cpu_stress_test b ON a.id != b.id
+                    WHERE a.id < 1000 AND b.id < 1000;

@@ -7,6 +7,12 @@ metadata:
     app.kubernetes.io/name: {{ .Release.Name }}
     app.kubernetes.io/part-of: {{ .Values.business_application }}
     scrape-prometheus: "true"
+    {{ if .Values.thresholds.error_rate }}
+    causely.ai/error-rate-threshold: "{{ .Values.thresholds.error_rate }}"
+    {{ end }}
+    {{ if .Values.thresholds.latency }}
+    causely.ai/latency-threshold: "{{ .Values.thresholds.latency }}"
+    {{ end }}
 spec:
   type: ClusterIP
   ports:

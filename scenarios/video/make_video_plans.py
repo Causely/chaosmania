@@ -234,7 +234,7 @@ def create():
     }}''')
 
     phase = Phase(name='phase1', client=Client(workers=[Worker(
-        instances=1, duration='1200h', delay='2ms')]), workload=Workload(actions=frontend.actions), setup=Workload(actions=[]))
+        instances=1, duration='672h', delay='2ms')]), workload=Workload(actions=frontend.actions), setup=Workload(actions=[]))
     plan = Plan(phases=[phase])
 
     yaml.safe_dump(plan.model_dump(), sys.stdout)
@@ -281,7 +281,7 @@ def create():
     }}''')
 
     phase = Phase(name='phase1', client=Client(workers=[Worker(
-        instances=1, duration='1200h', delay='2ms')]), workload=Workload(actions=frontend.actions), setup=Workload(actions=[]))
+        instances=1, duration='672h', delay='2ms')]), workload=Workload(actions=frontend.actions), setup=Workload(actions=[]))
     plan = Plan(phases=[phase])
 
     yaml.safe_dump(plan.model_dump(), sys.stdout)
@@ -345,7 +345,7 @@ def create(
     }}''')
 
     phase = Phase(name='phase1', client=Client(workers=[Worker(
-        instances=1, duration='1200h', delay='1s')]), workload=Workload(actions=frontend.actions), setup=Workload(actions=[]))
+        instances=1, duration='672h', delay='1s')]), workload=Workload(actions=frontend.actions), setup=Workload(actions=[]))
     plan = Plan(phases=[phase])
 
     yaml.safe_dump(plan.model_dump(), sys.stdout)

@@ -10,6 +10,7 @@ parse_args() {
     REPEATS_PER_PHASE=""
     PHASE_PATTERN=""
     RUNTIME_DURATION=""
+    NAMESPACE_SUFFIX=""
 
     for arg in "$@"; do
         case $arg in
@@ -29,6 +30,10 @@ parse_args() {
                 export RUNTIME_DURATION=$2
                 shift 2
                 ;;
+            --namespace-suffix)
+                export NAMESPACE_SUFFIX=$2
+                shift 2
+                ;;
         esac
     done
 }
@@ -41,6 +46,11 @@ setup_namespace() {
         export NAMESPACE=$USER-$SCENARIO
     else
         export NAMESPACE=$SCENARIO
+    fi
+
+    # Add suffix if provided
+    if [ ! -z "$NAMESPACE_SUFFIX" ]; then
+        export NAMESPACE=$NAMESPACE-$NAMESPACE_SUFFIX
     fi
 
     echo "Creating namespace $NAMESPACE"
@@ -60,7 +70,7 @@ build_client_args() {
         CLIENT_ARGS="$CLIENT_ARGS --set chaos.phase_pattern=$PHASE_PATTERN"
     fi
     if [ ! -z "$RUNTIME_DURATION" ]; then
-        CLIENT_ARGS="$CLIENT_ARGS --set chaos.pattern_duration=$RUNTIME_DURATION"
+        CLIENT_ARGS="$CLIENT_ARGS --set chaos.runtime_duration=$RUNTIME_DURATION"
     fi
     echo "$CLIENT_ARGS"
 }
@@ -98,7 +108,7 @@ upgrade_client() {
     helm delete --namespace $NAMESPACE $CLIENT_NAME || true
     helm upgrade --install --namespace $NAMESPACE \
         --set image.tag=$IMAGE_TAG \
-        --set chaos.host=$CHAOS_HOST.$NAMESPACE.svc.cluster.local. \
+        --set chaos.host=$CHAOS_HOST \
         --set chaos.plan=$PLAN_PATH \
         --set business_application=$SCENARIO \
         --set otlp.enabled=true \

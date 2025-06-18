@@ -10,7 +10,7 @@ require (
 	github.com/go-sql-driver/mysql v1.9.3
 	github.com/google/uuid v1.6.0
 	github.com/lib/pq v1.10.9
-	github.com/minio/minio-go/v7 v7.0.93
+	github.com/minio/minio-go/v7 v7.0.94
 	github.com/prometheus/client_golang v1.22.0
 	github.com/redis/go-redis/extra/redisotel/v9 v9.10.0
 	github.com/redis/go-redis/v9 v9.10.0

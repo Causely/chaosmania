@@ -106,6 +106,7 @@ func sendRequest(logger *zap.Logger, payload map[string]any, host string, port i
 	resp, err := doRequest(req, nil)
 
 	if err != nil {
+		logger.Error("Request failed", zap.String("host", host), zap.Int64("port", port), zap.Error(err))
 		return err
 	}
 
@@ -115,7 +116,7 @@ func sendRequest(logger *zap.Logger, payload map[string]any, host string, port i
 			return err
 		}
 
-		logger.Warn("Request failed:")
+		logger.Warn("Request failed with 400 status:", zap.String("host", host), zap.Int64("port", port))
 		logger.Warn(string(s))
 	}
 
@@ -229,10 +230,13 @@ loop:
 func executePhase(logger *zap.Logger, phase actions.Phase, raw map[string]any, host string, port int64, header map[string]string, ctx context.Context, durations *actions.PhaseDurations, phaseIndex int, reporter *actions.Reporter) error {
 	// Setup
 	if s, ok := raw["setup"]; ok {
+		logger.Info("Executing setup section")
 		err := sendRequest(logger, s.(map[string]any), host, port, header)
 		if err != nil {
+			logger.Error("Setup section failed", zap.Error(err))
 			return err
 		}
+		logger.Info("Setup section completed successfully")
 	}
 
 	phaseStart := time.Now()
@@ -355,11 +359,13 @@ func executePhase(logger *zap.Logger, phase actions.Phase, raw map[string]any, h
 
 	// Always run teardown, even if context is cancelled
 	if t, ok := raw["teardown"]; ok {
-		logger.Info("Running teardown...")
+		logger.Info("Executing teardown section")
 		err := sendRequest(logger, t.(map[string]any), host, port, header)
 		if err != nil {
-			logger.Warn("Teardown failed", zap.Error(err))
+			logger.Error("Teardown section failed", zap.Error(err))
 			// Don't return the error since we want to ensure the context cancellation propagates
+		} else {
+			logger.Info("Teardown section completed successfully")
 		}
 	}
 

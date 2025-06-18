@@ -1,14 +1,16 @@
-#!/bin/sh
+#!/bin/bash
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+source $SCRIPT_DIR/../../scripts/lib/chaosmania.sh
 
-IMAGE_REPO=quay.io/causely/chaosmania
-IMAGE_TAG=latest
-NAMESPACE=cm-postgres-cpu-congestion
+# Parse arguments
+parse_args "$@"
 
-kubectl create namespace $NAMESPACE
-kubectl label namespace $NAMESPACE istio-injection=disabled --overwrite
+# Setup scenario
+SCENARIO=cm-postgres-cpu-congestion
 
+# Setup namespace
+setup_namespace $SCENARIO
 
 echo "Deploying DB"
 helm upgrade --install --namespace $NAMESPACE \
@@ -19,34 +21,31 @@ helm upgrade --install --namespace $NAMESPACE \
     postgres oci://registry-1.docker.io/bitnamicharts/postgresql
     # --set commonLabels.app\.kubernetes\.io/part-of=$NAMESPACE \
 
-helm upgrade --install --namespace $NAMESPACE \
-    --set image.tag=$IMAGE_TAG \
-    --set replicaCount=1 \
-    --set business_application=$NAMESPACE \
-    frontend $SCRIPT_DIR/../../helm/single 
+echo "Waiting for PostgreSQL to be ready..."
+kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=postgresql -n $NAMESPACE --timeout=300s
 
-echo "Deploying payment"
-helm upgrade --install --namespace $NAMESPACE \
-    --set image.tag=$IMAGE_TAG \
-    --set replicaCount=2 \
-    --set business_application=$NAMESPACE \
-    payment $SCRIPT_DIR/../../helm/single 
+# Deploy single instance
+upgrade_single "frontend" $NAMESPACE $SCENARIO $SCRIPT_DIR "--set" "replicaCount=1"
 
+# Deploy single instance
+upgrade_single "payment" $NAMESPACE $SCENARIO $SCRIPT_DIR "--set" "replicaCount=2"
+
+
+echo "Deploying postgres-exporter..."
+helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+helm repo update
 helm upgrade --install --namespace $NAMESPACE \
-    --set serviceMonitor.enabled=true \
+    --set serviceMonitor.enabled=false \
     --set config.datasource.host=postgres-postgresql \
     --set config.datasource.password=postgres \
     --set config.datasource.user=postgres \
     postgres-exporter prometheus-community/prometheus-postgres-exporter
 
+echo "Waiting for Frontend to be ready..."
+kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=frontend -n $NAMESPACE --timeout=300s
+
 echo "Deploying client"
-helm delete --namespace $NAMESPACE client
-helm upgrade --install --namespace $NAMESPACE \
-    --set image.tag=$IMAGE_TAG \
-    --set chaos.host=frontend \
-    --set chaos.plan=/scenarios/$NAMESPACE-plan.yaml \
-    --set business_application=$NAMESPACE \
-    client $SCRIPT_DIR/../../helm/client
+upgrade_client $NAMESPACE $SCENARIO $SCRIPT_DIR "client" "frontend" "/scenarios/$SCENARIO-plan.yaml"
 
 echo "Configure scraper"
 kubectl create secret generic \

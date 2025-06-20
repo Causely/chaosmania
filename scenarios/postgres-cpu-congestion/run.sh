@@ -15,7 +15,7 @@ setup_namespace $SCENARIO
 echo "Deploying DB"
 helm upgrade --install --namespace $NAMESPACE \
     --set global.postgresql.auth.postgresPassword=postgres \
-    --set commonLabels."app\.kubernetes\.io/part-of"=$NAMESPACE \
+    --set commonLabels."app\.kubernetes\.io/part-of"=$SCENARIO \
     --set primary.resources.limits.cpu=400m \
     -f $SCRIPT_DIR/postgres_values.yaml \
     postgres oci://registry-1.docker.io/bitnamicharts/postgresql
@@ -55,9 +55,9 @@ kubectl create secret generic \
     --namespace $NAMESPACE \
     --from-literal=username="postgres" \
     --from-literal=password="postgres" \
-    --from-literal=host="postgres-postgresql.$NAMESPACE.svc.cluster.local" \
+    --from-literal=host="postgres-postgresql" \
     --from-literal=port=5432 \
     --from-literal=database="postgres" \
-    $NAMESPACE-postgres-credentials | kubectl apply -f -
+    $SCENARIO-postgres-credentials | kubectl apply -f -
 
-kubectl label secret $NAMESPACE-postgres-credentials --namespace $NAMESPACE "causely.ai/scraper=Postgresql" --overwrite
+kubectl label secret $SCENARIO-postgres-credentials --namespace $NAMESPACE "causely.ai/scraper=Postgresql" --overwrite

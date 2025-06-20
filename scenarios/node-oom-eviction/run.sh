@@ -13,7 +13,7 @@ SCENARIO=cm-node-oom-eviction
 setup_namespace $SCENARIO
 
 # Deploy single instance
-upgrade_single "single" $NAMESPACE $SCENARIO $SCRIPT_DIR "--set" "replicaCount=3"
+upgrade_single "single" $NAMESPACE $SCENARIO $SCRIPT_DIR "--set" "resources.limits.memory=256Mi" "--set" "replicaCount=3"
 
 # Deploy client
 upgrade_client $NAMESPACE $SCENARIO $SCRIPT_DIR "client" "single" "/scenarios/$SCENARIO-plan.yaml"

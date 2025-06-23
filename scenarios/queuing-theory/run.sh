@@ -13,7 +13,7 @@ SCENARIO=cm-queuing-theory
 setup_namespace $SCENARIO
 
 # Deploy single instance
-upgrade_single "single" $NAMESPACE $SCENARIO $SCRIPT_DIR "--set" "resources.limits.cpu=1000m"
+upgrade_single "single" $NAMESPACE $SCENARIO $SCRIPT_DIR "--set" "resources.limits.cpu=500m"
 
 # Deploy client
 upgrade_client $NAMESPACE $SCENARIO $SCRIPT_DIR "client" "single" "/scenarios/$SCENARIO-plan.yaml"

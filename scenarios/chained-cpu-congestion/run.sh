@@ -14,7 +14,7 @@ setup_namespace $SCENARIO
 
 # Deploy single instance
 upgrade_single "frontend" "$NAMESPACE" "$SCENARIO" "$SCRIPT_DIR" "--set" "replicaCount=2"
-upgrade_single "payment-service" "$NAMESPACE" "$SCENARIO" "$SCRIPT_DIR" "--set" "replicaCount=1" "--set" "resources.limits.cpu=1000m"
+upgrade_single "payment-service" "$NAMESPACE" "$SCENARIO" "$SCRIPT_DIR" "--set" "replicaCount=1" "--set" "resources.limits.cpu=500m"
 upgrade_single "order-service" "$NAMESPACE" "$SCENARIO" "$SCRIPT_DIR" "--set" "replicaCount=2"
 
 # Deploy client

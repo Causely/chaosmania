@@ -13,7 +13,7 @@ SCENARIO=cm-node-cpu-congestion
 setup_namespace $SCENARIO
 
 # Deploy single instance
-upgrade_single "single" $NAMESPACE $SCENARIO $SCRIPT_DIR "--set" "replicaCount=1"
+upgrade_single "single" $NAMESPACE $SCENARIO $SCRIPT_DIR "--set" "resources.limits.cpu=500m" "--set" "replicaCount=1"
 
 # Deploy client
 upgrade_client $NAMESPACE $SCENARIO $SCRIPT_DIR "client" "single" "/scenarios/$SCENARIO-plan.yaml"

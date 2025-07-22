@@ -41,6 +41,7 @@ parse_args() {
 # Setup namespace
 setup_namespace() {
     local SCENARIO=$1
+    local ENABLE_ISTIO=${2:-false}
 
     if [ "$PREFIX_USER" = true ]; then
         export NAMESPACE=$USER-$SCENARIO
@@ -56,8 +57,12 @@ setup_namespace() {
     echo "Creating namespace $NAMESPACE"
     kubectl create namespace $NAMESPACE || true
 
-    echo "Labeling namespace $NAMESPACE for Istio injection"
-    kubectl label namespace $NAMESPACE istio-injection=enabled --overwrite || true
+    if [ "$ENABLE_ISTIO" = true ]; then
+        echo "Labeling namespace $NAMESPACE for Istio injection"
+        kubectl label namespace $NAMESPACE istio-injection=enabled --overwrite || true
+    else
+        echo "Skipping Istio injection for namespace $NAMESPACE"
+    fi
 }
 
 # Build client arguments

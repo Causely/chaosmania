@@ -10,7 +10,7 @@ parse_args "$@"
 SCENARIO=cm-chained-virtual-services
 
 # Setup namespace
-setup_namespace $SCENARIO
+setup_namespace $SCENARIO true  # label namespace for istio injection.
 
 
 # Setup istio ingress gateway

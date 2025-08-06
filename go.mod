@@ -12,8 +12,8 @@ require (
 	github.com/lib/pq v1.10.9
 	github.com/minio/minio-go/v7 v7.0.95
 	github.com/prometheus/client_golang v1.23.0
-	github.com/redis/go-redis/extra/redisotel/v9 v9.11.0
-	github.com/redis/go-redis/v9 v9.11.0
+	github.com/redis/go-redis/extra/redisotel/v9 v9.12.0
+	github.com/redis/go-redis/v9 v9.12.0
 	github.com/rotisserie/eris v0.5.4
 	github.com/snowflakedb/gosnowflake v1.15.0
 	github.com/streadway/amqp v1.1.0
@@ -152,7 +152,7 @@ require (
 	github.com/prometheus/procfs v0.16.1 // indirect
 	github.com/puzpuzpuz/xsync/v3 v3.5.1 // indirect
 	github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475 // indirect
-	github.com/redis/go-redis/extra/rediscmd/v9 v9.11.0 // indirect
+	github.com/redis/go-redis/extra/rediscmd/v9 v9.12.0 // indirect
 	github.com/rs/xid v1.6.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/secure-systems-lab/go-securesystemslib v0.9.0 // indirect
